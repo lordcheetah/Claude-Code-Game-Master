@@ -626,7 +626,8 @@ class AgentExtractor:
             'extracted',        # Agent output JSON files
             'merged-results.json',  # Pre-save merged data
             # 'vectors' - KEEP for /enhance command
-            'current-document.txt',  # Source text (can re-extract from PDF)
+            # 'current-document.txt' - KEEP: long-context reading + the Book Bible
+            #   need the retained text. (Demoted embeddings to a coarse index.)
             'metadata.json',    # Extraction metadata
         ]
 

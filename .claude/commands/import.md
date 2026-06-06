@@ -319,6 +319,35 @@ Confirm `name` is the book's world (not "Generic Adventure") and the attribute l
 
 ---
 
+## Step 6.6: Author the Overview + campaign_rules — REQUIRED
+
+The World Kit (ruleset.json) is a thin router. The book's signature SYSTEMS live in
+`campaign-overview.json`'s `campaign_rules` block — `WorldKit.campaign_rules()` reads
+them into scene context. A fresh import leaves the overview as the default scaffold
+(genre "Fantasy", date "Year 1", no campaign_rules), so without this step the book's
+flavor is captured nowhere the DM tooling reads.
+
+Author real overview content from the source and write a `campaign_rules` block
+describing the book's signature systems, then resolve any dangling `rules_doc`:
+
+```bash
+uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
+  --fields-json '{"campaign_name":"<World/Book Name>","genre":"<e.g. LitRPG / Comedy-Horror>","tone":{"horror":30,"comedy":35,"drama":35}}' \
+  --rules-json '{"<system_key>":"<one-line rule the DM enforces>", "...":"..."}' \
+  --fix-rules-doc
+```
+
+For a DCC import, `campaign_rules` should cover: viewer-based progression, loot boxes,
+saferooms/shops, the moving Iron Tangle trains, prime-station stairwells, and the
+collapse clock. `--fix-rules-doc` nulls a `rules.md` pointer with no file on disk.
+(The rules-doc-authoring step later writes substantive `rules.md` prose and re-points it.)
+
+Verify: `bash tools/dm-campaign.sh switch "<campaign-name>"` then
+`uv run python -c "import sys;sys.path.insert(0,'lib');from world_kit import WorldKit;print(list(WorldKit().campaign_rules().keys()))"`
+— the campaign_rules keys must be non-empty.
+
+---
+
 ## Step 7: Switch to Campaign and Show Summary
 
 ```bash

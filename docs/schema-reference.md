@@ -206,8 +206,12 @@ Tracks events that will trigger in the future.
     {
       "id": "8-char-uuid",
       "consequence": "string (what will happen)",
-      "trigger": "string (when it triggers)",
-      "created": "ISO timestamp"
+      "trigger": "string (free-text, when it triggers)",
+      "created": "ISO timestamp",
+
+      "trigger_type": "on_location | on_npc | on_time | on_event   (OPTIONAL, structured)",
+      "match": "string compared against world state (location name / npc / time keyword / event keyword)",
+      "expiry": "string date or condition after which it ages out   (OPTIONAL)"
     }
   ],
   "resolved": [
@@ -221,6 +225,11 @@ Tracks events that will trigger in the future.
   ]
 }
 ```
+
+**Structured triggers** (`trigger_type`/`match`/`expiry`) are additive and
+optional. When present, the reactivity engine fires the consequence automatically
+when world state matches (and expires it past `expiry`); when absent, the
+consequence is a legacy free-text entry matched fuzzily. A campaign may mix both.
 
 ---
 

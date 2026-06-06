@@ -30,10 +30,23 @@ class ConsequenceManager(EntityManager):
             data = {'active': [], 'resolved': []}
             self.json_ops.save_json(self.consequences_file, data)
 
-    def add_consequence(self, description: str, trigger: str) -> str:
+    # Structured trigger types the reactivity engine can evaluate automatically.
+    TRIGGER_TYPES = ('on_location', 'on_npc', 'on_time', 'on_event')
+
+    def add_consequence(self, description: str, trigger: str,
+                        trigger_type: str = None, match: str = None,
+                        expiry: str = None) -> str:
         """
-        Add a new consequence
-        Returns the consequence ID
+        Add a new consequence.
+
+        Free-text `trigger` is always kept (human-readable + fuzzy fallback).
+        Optionally attach a STRUCTURED trigger the engine can fire/expire on:
+          trigger_type: one of TRIGGER_TYPES (on_location/on_npc/on_time/on_event)
+          match:        value compared against world state (location/npc/time/event keyword)
+          expiry:       optional date or condition after which the consequence ages out
+        Structured fields are additive; legacy consequences omit them.
+
+        Returns the consequence ID.
         """
         data = self.json_ops.load_json(self.consequences_file)
 
@@ -44,6 +57,12 @@ class ConsequenceManager(EntityManager):
             'trigger': trigger,
             'created': self.json_ops.get_timestamp()
         }
+        if trigger_type:
+            consequence['trigger_type'] = trigger_type
+        if match is not None:
+            consequence['match'] = match
+        if expiry is not None:
+            consequence['expiry'] = expiry
 
         if 'active' not in data:
             data['active'] = []
@@ -109,7 +128,12 @@ def main():
     # Add consequence
     add_parser = subparsers.add_parser('add', help='Add new consequence')
     add_parser.add_argument('description', help='Consequence description')
-    add_parser.add_argument('trigger', help='Trigger condition')
+    add_parser.add_argument('trigger', help='Trigger condition (free-text)')
+    add_parser.add_argument('--trigger-type', dest='trigger_type',
+                            choices=list(ConsequenceManager.TRIGGER_TYPES),
+                            help='Structured trigger type (enables auto-firing)')
+    add_parser.add_argument('--match', help='Structured trigger match value')
+    add_parser.add_argument('--expiry', help='Optional expiry (date or condition)')
 
     # Check pending
     subparsers.add_parser('check', help='Check pending consequences')
@@ -130,7 +154,9 @@ def main():
     manager = ConsequenceManager()
 
     if args.action == 'add':
-        if not manager.add_consequence(args.description, args.trigger):
+        if not manager.add_consequence(args.description, args.trigger,
+                                       trigger_type=args.trigger_type,
+                                       match=args.match, expiry=args.expiry):
             sys.exit(1)
 
     elif args.action == 'check':

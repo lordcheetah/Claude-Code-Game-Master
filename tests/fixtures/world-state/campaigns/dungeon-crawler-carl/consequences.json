@@ -4,19 +4,25 @@
       "id": "b5aeefab",
       "consequence": "Squeeks may spread word of the party's heroism to other dungeon NPCs",
       "trigger": "When party encounters friendly NPCs",
-      "created": "2026-01-28T22:46:26.793274+00:00"
+      "created": "2026-01-28T22:46:26.793274+00:00",
+      "trigger_type": "on_npc",
+      "match": "friendly"
     },
     {
       "id": "a36a02f6",
       "consequence": "Nightstalker hunting party may track the party's scent to the village",
       "trigger": "If party stays in village for more than 2 days, or leaves at night again",
-      "created": "2026-01-30T01:33:34.417203+00:00"
+      "created": "2026-01-30T01:33:34.417203+00:00",
+      "trigger_type": "on_time",
+      "match": "night"
     },
     {
       "id": "c3e61742",
       "consequence": "Sheol Glass Reaper Case inside Tandy's stomach - unstable WMD absorbing magic pulses internally. Unknown side effects.",
       "trigger": "Ongoing - each magic pulse, and when party reaches Floor 4",
-      "created": "2026-02-08T13:28:33.332706+00:00"
+      "created": "2026-02-08T13:28:33.332706+00:00",
+      "trigger_type": "on_location",
+      "match": "Floor 4"
     }
   ],
   "resolved": [
@@ -117,7 +123,10 @@
       "id": "mongo-frenzy",
       "consequence": "Mongo may go into uncontrollable frenzy if enemies appear suddenly",
       "trigger": "When combat begins unexpectedly",
-      "created": "2026-01-29T01:10:00.000000+00:00"
+      "created": "2026-01-29T01:10:00.000000+00:00",
+      "trigger_type": "on_event",
+      "match": "combat",
+      "expiry": "Floor 4"
     },
     {
       "id": "mongo-training",

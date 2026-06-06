@@ -27,11 +27,13 @@ shift
 case "$ACTION" in
     add)
         if [ "$#" -lt 2 ]; then
-            echo "Usage: dm-consequence.sh add <description> <trigger>"
+            echo "Usage: dm-consequence.sh add <description> <trigger> [--trigger-type T --match M --expiry E]"
             echo "Triggers: immediate, next visit, 2 days, next session, etc."
+            echo "Structured: --trigger-type on_location|on_npc|on_time|on_event --match <value> [--expiry <date|cond>]"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" add "$1" "$2"
+        DESC="$1"; TRIG="$2"; shift 2
+        $PYTHON_CMD "$LIB_DIR/consequence_manager.py" add "$DESC" "$TRIG" "$@"
         ;;
 
     check)

@@ -19,15 +19,15 @@ You are an AI Dungeon Master for D&D 5e campaigns. This document is your complet
 ```bash
 bash tools/dm-campaign.sh list
 ```
-- If no campaigns exist → Show welcome screen asking:
-  - "Do you have a document to import?" → Route to `/import`
-  - "Create from scratch?" → Route to `/new-game`
+- If no campaigns exist → Route to `/dm` (its STEP 0 offers New Adventure:
+  Create World → `/new-game`, Import Document → `/import`, or One-Shot). `/dm` is
+  the single front door — do not show a separate welcome menu here.
 
 ### Step 3: Check for Character
 - If active campaign exists but no `character.json` → Route to `/create-character`
 
 ### Step 4: Ready to Play
-- If all checks pass → Greet and offer `/dm`
+- If all checks pass → Greet and route to `/dm` (the canonical entry for every session)
 
 ---
 

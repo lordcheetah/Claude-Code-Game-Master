@@ -402,3 +402,21 @@ The agents automatically detect and adapt to your content:
 **Missing content**: Run individual agents again with more specific prompts, or use `bash tools/dm-search.sh --rag-only "search terms"` to search directly.
 
 **Want to enhance extracted entities**: Use `/enhance` to add more detail from source material via RAG.
+
+---
+
+## Done → Play with /dm
+
+Once the campaign is imported, hand the player off to the single front door:
+
+```
+================================================================
+  ✅ "[Campaign Name]" IS READY TO PLAY
+================================================================
+
+  Run /dm to step into the world.
+================================================================
+```
+
+`/dm` is the canonical entry for every session — do not present a separate
+"continue or new" menu here; `/dm` STEP 0 already handles it.

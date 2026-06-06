@@ -54,88 +54,27 @@ Run this command to install DM Claude dependencies. This runs automatically on f
 
 ---
 
-## Welcome Screen
+## Setup Complete → Hand Off to /dm
 
-After completing installation, display the welcome screen:
+Installation is the only job of this command. `/dm` is the single front door for
+everything that follows — do NOT re-implement a campaign/import/new-game menu here.
+`/dm` already lists saved campaigns and offers **New Adventure** (Create World →
+`/new-game`, Import Document → `/import`, or One-Shot).
+
+After install succeeds, display:
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  WELCOME TO DM CLAUDE
-  Your AI Dungeon Master
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+================================================================
+  ✅ DM CLAUDE IS READY
+================================================================
 
-Do you have a D&D book, adventure module, or story
-you'd like to bring to life?
+  Run /dm to begin.
 
-  1) Yes, I have a document to import
-     → We'll extract NPCs, locations, items, and
-       quests from your file (PDF, DOCX, or TXT)
-
-  2) No, create a world from scratch
-     → Answer a few questions and we'll generate
-       a unique campaign world for you
+  • Pick up a saved campaign, or
+  • Start a New Adventure: create a world, import a book,
+    or jump into a quick one-shot.
+================================================================
 ```
 
-Use AskUserQuestion to get the user's choice with these options:
-- **Option 1**: "Yes, I have a document" - Explain: Import a PDF, DOCX, or TXT file and extract characters, places, items, and quests automatically
-- **Option 2**: "No, create from scratch" - Explain: Answer a few questions about tone, magic level, and setting to generate a unique world
-
-## Routing Based on Choice
-
-### If user chooses "Yes, I have a document":
-
-**First, check the source-material folder for existing files:**
-```bash
-ls -la source-material/ 2>/dev/null | grep -E '\.(pdf|docx|txt|md)$'
-```
-
-If files are found, display them:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  IMPORT YOUR ADVENTURE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Found documents in source-material/:
-
-  1) [filename.pdf]
-  2) [filename2.docx]
-  ...
-
-  Or: Drag/drop a different file, or paste a path
-
-Supported formats: PDF, DOCX, TXT, MD
-```
-
-Use AskUserQuestion to let them pick from the list OR provide their own path.
-
-If no files in source-material/, display:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  IMPORT YOUR ADVENTURE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Drag and drop your file here, or paste the file path.
-(Tip: You can also place files in source-material/)
-
-Supported formats: PDF, DOCX, TXT, MD
-```
-
-Then ask for:
-1. **File path**: The path to their document (or selection from source-material)
-2. **Campaign name**: What to call this campaign (optional, defaults to filename)
-
-Once you have both, run `/import "<file-path>" "<campaign-name>"` to start the import workflow.
-
-### If user chooses "No, create from scratch":
-Run `/new-game` to start the world creation workflow.
-
----
-
-## Returning Players
-
-If campaigns already exist (check with `bash tools/dm-campaign.sh list`), skip the welcome screen and instead:
-
-1. Show existing campaigns
-2. Ask if they want to:
-   - Continue an existing campaign → `/dm`
-   - Create a new campaign → Show welcome screen above
+Then route into `/dm` (its STEP 0 handles campaign selection, new-vs-import, and
+returning players in one place).

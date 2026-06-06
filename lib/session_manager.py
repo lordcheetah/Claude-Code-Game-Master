@@ -390,6 +390,17 @@ class SessionManager(EntityManager):
             for fact_line in key_facts:
                 lines.append(f"- {fact_line}")
 
+        # --- Threat Clocks (felt, mounting pressure; only when any are declared) ---
+        clocks = self.json_ops.load_json("threat-clocks.json") or {}
+        if clocks:
+            lines.append("")
+            lines.append("--- THREAT CLOCKS ---")
+            for clock_name, c in clocks.items():
+                cur, mx = int(c.get('current', 0)), int(c.get('max', 1))
+                bar = "●" * cur + "○" * max(0, mx - cur)
+                flag = "  ⚠ FULL — a beat is due" if cur >= mx else ""
+                lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{flag}")
+
         # --- Character ---
         lines.append("")
         lines.append("--- CHARACTER ---")

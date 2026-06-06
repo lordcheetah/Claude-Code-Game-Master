@@ -114,13 +114,10 @@ EOF
 EOF
     echo "  ✓ Session log cleared"
 
-    # Remove character file (new format) or characters directory (legacy)
+    # Remove character file
     if [ -f "$CHARACTER_FILE" ]; then
         rm -f "$CHARACTER_FILE"
         echo "  ✓ Character removed"
-    elif [ -d "$CHARACTERS_DIR" ]; then
-        rm -f "$CHARACTERS_DIR"/*.json 2>/dev/null
-        echo "  ✓ Characters removed"
     fi
 
     echo ""

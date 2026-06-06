@@ -10,7 +10,7 @@ Be respectful, inclusive, and constructive. We're all here to make D&D more fun 
 
 ### Reporting Issues
 
-1. Check if the issue already exists in [GitHub Issues](https://github.com/yourusername/dm-claude/issues)
+1. Check if the issue already exists in [GitHub Issues](https://github.com/Sstobo/Claude-Code-Game-Master/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce (if it's a bug)
@@ -19,7 +19,7 @@ Be respectful, inclusive, and constructive. We're all here to make D&D more fun 
 
 ### Suggesting Features
 
-1. Open a [Discussion](https://github.com/yourusername/dm-claude/discussions) first
+1. Open a [Discussion](https://github.com/Sstobo/Claude-Code-Game-Master/discussions) first
 2. Describe the feature and why it would be useful
 3. Consider how it fits with the project's goals
 
@@ -30,8 +30,8 @@ Be respectful, inclusive, and constructive. We're all here to make D&D more fun 
 1. Fork the repository
 2. Clone your fork:
 ```bash
-git clone https://github.com/yourusername/dm-claude.git
-cd dm-claude
+git clone https://github.com/Sstobo/Claude-Code-Game-Master.git
+cd Claude-Code-Game-Master
 ```
 
 3. Install with development dependencies:
@@ -178,8 +178,8 @@ Understanding the project structure helps with contributions:
 ## Getting Help
 
 - Join our [Discord](https://discord.gg/dmclaude)
-- Ask questions in [Discussions](https://github.com/yourusername/dm-claude/discussions)
-- Check the [Wiki](https://github.com/yourusername/dm-claude/wiki)
+- Ask questions in [Discussions](https://github.com/Sstobo/Claude-Code-Game-Master/discussions)
+- Check the [Wiki](https://github.com/Sstobo/Claude-Code-Game-Master/wiki)
 
 ## Recognition
 

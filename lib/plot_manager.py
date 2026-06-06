@@ -354,7 +354,8 @@ class PlotManager(EntityManager):
             from session_manager import SessionManager
             sm = SessionManager()
             current_session = sm._get_session_number()
-        except Exception:
+        except Exception as e:
+            print(f"[WARNING] Could not determine session number for plot staleness: {e}", file=sys.stderr)
             current_session = None
 
         for name, data in plots.items():

@@ -43,8 +43,8 @@ class DiceRoller:
     def __init__(self):
         # Regex patterns for different dice notations
         self.simple_pattern = re.compile(r'(\d+)d(\d+)([+-]\d+)?')
-        self.advantage_pattern = re.compile(r'(\d+)d(\d+)kh(\d+)')  # keep highest
-        self.disadvantage_pattern = re.compile(r'(\d+)d(\d+)kl(\d+)')  # keep lowest
+        self.advantage_pattern = re.compile(r'(\d+)d(\d+)kh(\d+)([+-]\d+)?')  # keep highest
+        self.disadvantage_pattern = re.compile(r'(\d+)d(\d+)kl(\d+)([+-]\d+)?')  # keep lowest
         
     def roll(self, notation: str) -> Dict:
         """
@@ -65,6 +65,7 @@ class DiceRoller:
             count, sides, keep = int(match.group(1)), int(match.group(2)), int(match.group(3))
             if sides < 1:
                 raise ValueError(f"Invalid die size: d{sides} (must be at least 1)")
+            modifier = int(match.group(4)) if match.group(4) else 0
             rolls = sorted([random.randint(1, sides) for _ in range(count)], reverse=True)
             kept = rolls[:keep]
             return {
@@ -72,7 +73,8 @@ class DiceRoller:
                 'rolls': rolls,
                 'kept': kept,
                 'discarded': rolls[keep:],
-                'total': sum(kept),
+                'modifier': modifier,
+                'total': sum(kept) + modifier,
                 'type': 'advantage'
             }
         
@@ -82,6 +84,7 @@ class DiceRoller:
             count, sides, keep = int(match.group(1)), int(match.group(2)), int(match.group(3))
             if sides < 1:
                 raise ValueError(f"Invalid die size: d{sides} (must be at least 1)")
+            modifier = int(match.group(4)) if match.group(4) else 0
             rolls = sorted([random.randint(1, sides) for _ in range(count)])
             kept = rolls[:keep]
             return {
@@ -89,7 +92,8 @@ class DiceRoller:
                 'rolls': rolls,
                 'kept': kept,
                 'discarded': rolls[keep:],
-                'total': sum(kept),
+                'modifier': modifier,
+                'total': sum(kept) + modifier,
                 'type': 'disadvantage'
             }
         
@@ -128,12 +132,14 @@ class DiceRoller:
         if result['type'] == 'advantage':
             kept_str = '+'.join(str(r) for r in result['kept'])
             discarded_str = '+'.join(str(r) for r in result['discarded'])
-            return f"🎲 {result['notation']}: {Colors.CYAN}[{kept_str}]{Colors.RESET} {Colors.DIM}(discarded: {discarded_str}){Colors.RESET} = {Colors.CYAN}{result['total']}{Colors.RESET}"
+            mod_str = f" {result.get('modifier', 0):+d}" if result.get('modifier', 0) != 0 else ""
+            return f"🎲 {result['notation']}: {Colors.CYAN}[{kept_str}]{Colors.RESET} {Colors.DIM}(discarded: {discarded_str}){Colors.RESET}{mod_str} = {Colors.CYAN}{result['total']}{Colors.RESET}"
 
         elif result['type'] == 'disadvantage':
             kept_str = '+'.join(str(r) for r in result['kept'])
             discarded_str = '+'.join(str(r) for r in result['discarded'])
-            return f"🎲 {result['notation']}: {Colors.CYAN}[{kept_str}]{Colors.RESET} {Colors.DIM}(discarded: {discarded_str}){Colors.RESET} = {Colors.CYAN}{result['total']}{Colors.RESET}"
+            mod_str = f" {result.get('modifier', 0):+d}" if result.get('modifier', 0) != 0 else ""
+            return f"🎲 {result['notation']}: {Colors.CYAN}[{kept_str}]{Colors.RESET} {Colors.DIM}(discarded: {discarded_str}){Colors.RESET}{mod_str} = {Colors.CYAN}{result['total']}{Colors.RESET}"
 
         else:  # standard
             is_crit = result.get('natural_20', False)

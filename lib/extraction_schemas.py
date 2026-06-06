@@ -52,7 +52,7 @@ ITEM_SCHEMA = {
 PLOT_HOOK_SCHEMA = {
     "name": "",  # Quest or plot name
     "description": "",  # Full description
-    "type": "",  # main/side/optional/random
+    "type": "",  # main/side/personal/world/optional
     "npcs": [],  # Related NPCs by name
     "locations": [],  # Related locations
     "objectives": [],  # Quest objectives

@@ -16,7 +16,7 @@ def fetch(endpoint):
     url = f"{BASE_URL}{endpoint}"
     
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=10) as response:
             return json.loads(response.read().decode())
     except urllib.error.HTTPError as e:
         return {"error": f"HTTP {e.code}", "message": e.reason}

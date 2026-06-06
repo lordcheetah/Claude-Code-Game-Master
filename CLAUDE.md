@@ -43,6 +43,9 @@ bash tools/dm-campaign.sh list
 | `/dm character` | Show character sheet |
 | `/dm overview` | View campaign state |
 | `/enhance` | Enrich entities with source material via RAG |
+| `/world-check` | Validate campaign consistency |
+| `/reset` | Clear campaign for a fresh start |
+| `/setup` | Verify/repair installation |
 | `/help` | See all commands |
 
 ---
@@ -988,6 +991,7 @@ bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 | `dm-extract.sh` | Import PDFs/documents |
 | `dm-enhance.sh` | Enrich known entities by name, or get scene context (NOT free-text search) |
 | `dm-npc.sh` | Create NPCs, update status, tag with locations/quests |
+| `dm-condition.sh` | Add/remove/check player conditions (poisoned, stunned, etc.) |
 | `dm-location.sh` | Add new locations, connect with paths |
 | `dm-consequence.sh` | Track events that will trigger later |
 | `dm-note.sh` | Record important facts about the world |
@@ -997,6 +1001,7 @@ bash tools/dm-note.sh "session_events" "[character] completed a long rest"
 | `dm-session.sh` | Start/end sessions, move party, save/restore |
 | `dm-overview.sh` | Quick summary of world state |
 | `dm-time.sh` | Advance game time |
+| `dm-reset.sh` | Reset/archive campaign data |
 
 ---
 

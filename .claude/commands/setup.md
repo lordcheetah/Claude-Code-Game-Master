@@ -21,7 +21,7 @@ Run this command to install DM Claude dependencies. This runs automatically on f
    Try uv first (faster), fall back to pip. Install with RAG extras for full functionality:
    ```bash
    if command -v uv &> /dev/null; then
-       uv pip install -e '.[rag]'
+       uv sync --extra rag
    else
        source .venv/bin/activate && pip install --upgrade pip && pip install -e '.[rag]'
    fi

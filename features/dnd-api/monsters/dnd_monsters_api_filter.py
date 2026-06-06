@@ -45,9 +45,9 @@ def fetch_monsters(
         url += "?" + "&".join(params)
     
     try:
-        with urllib.request.urlopen(url) as response:
-            data = json.loads(response.read())
-            
+        with urllib.request.urlopen(url, timeout=10) as response:
+            data = json.loads(response.read().decode())
+
             # Apply search filter if provided
             if search and "results" in data:
                 search_lower = search.lower()

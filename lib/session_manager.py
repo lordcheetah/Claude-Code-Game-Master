@@ -5,7 +5,6 @@ Handles session lifecycle, party movement, and JSON-based saves
 """
 
 import sys
-import shutil
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from datetime import datetime, timezone
@@ -431,16 +430,20 @@ class SessionManager(EntityManager):
         consequences = self.json_ops.load_json("consequences.json") or {}
         pending = []
         if isinstance(consequences, dict):
-            for cid, cdata in consequences.items():
-                if isinstance(cdata, dict) and cdata.get('status', 'pending') == 'pending':
-                    event = cdata.get('event', cdata.get('description', 'Unknown'))
+            # Not-yet-resolved consequences live in the 'active' (and optional 'pending') lists
+            for section in ('active', 'pending'):
+                for cdata in consequences.get(section, []):
+                    if not isinstance(cdata, dict):
+                        continue
+                    event = cdata.get('consequence', 'Unknown')
                     trigger = cdata.get('trigger', 'Unknown')
+                    cid = str(cdata.get('id', '?'))
                     short_id = cid[:4] if len(cid) >= 4 else cid
                     pending.append(f"[{short_id}] {event} -> triggers: {trigger}")
         elif isinstance(consequences, list):
             for cdata in consequences:
-                if isinstance(cdata, dict) and cdata.get('status', 'pending') == 'pending':
-                    event = cdata.get('event', cdata.get('description', 'Unknown'))
+                if isinstance(cdata, dict):
+                    event = cdata.get('consequence', cdata.get('event', 'Unknown'))
                     trigger = cdata.get('trigger', 'Unknown')
                     cid = str(cdata.get('id', '?'))
                     short_id = cid[:4] if len(cid) >= 4 else cid

@@ -154,7 +154,7 @@ def main():
     output({
         "count": len(spells),
         "total": total,
-        "results": formatted if isinstance(formatted[0], dict) and "level" in formatted[0] else spells
+        "results": formatted if (formatted and isinstance(formatted[0], dict) and "level" in formatted[0]) else spells
     })
 
 if __name__ == "__main__":

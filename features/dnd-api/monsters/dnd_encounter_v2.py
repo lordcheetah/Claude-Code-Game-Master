@@ -23,8 +23,8 @@ def get_monsters_by_cr(target_cr):
     url = f"{BASE_URL}/api/2014/monsters?challenge_rating={target_cr}"
     
     try:
-        with urllib.request.urlopen(url) as response:
-            data = json.loads(response.read())
+        with urllib.request.urlopen(url, timeout=10) as response:
+            data = json.loads(response.read().decode())
             if "results" in data:
                 # Extract monster indices from URLs
                 return [m["url"].split("/")[-1] for m in data["results"]]

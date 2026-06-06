@@ -354,3 +354,24 @@ Snapshots of world state at a point in time.
 - Empty arrays `[]` are preferred over `null` for list fields
 - Boolean fields default to `false` if omitted
 - The `created` field is auto-set by managers when entities are created
+
+## ruleset.json (World Kit)
+
+Per-campaign ruleset that drives play through the generic `game_core`. Declares
+how a world plays without baking in D&D 5e.
+
+```json
+{
+  "name": "Dungeon Crawler Carl",
+  "stat_schema": { "attributes": ["str","con","dex","int"], "vitals": ["hp"] },
+  "progression": { "model": "milestone | xp-levels | resource-axis", "...": "model config (thresholds/tiers/resource)" },
+  "resolution": { "model": "d20-vs-dc" },
+  "active_agents": ["monster-manual", "loot-dropper"],
+  "rules_doc": "rules.md"
+}
+```
+
+- `stat_schema.attributes` is open and kit-defined (no fixed six abilities).
+- `progression.model` selects one of the core's three models; its config
+  (`thresholds` for xp-levels, `resource`+`tiers` for resource-axis) is supplied here.
+- World-flavor systems (loot boxes, viewers) stay in campaign-overview `campaign_rules`.

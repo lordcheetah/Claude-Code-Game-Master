@@ -255,6 +255,11 @@ bash tools/dm-extract.sh normalize "<campaign-name>"
 # entities aren't enhanced. Reports dropped counts to the user.
 bash tools/dm-extract.sh cap "<campaign-name>" 30
 
+# Normalize connection targets: canonicalize drifted `connections.to` to real keys
+# and move routing rule-phrases ("Any line", "Transfer stations ending in 1") into
+# notes so reconcile doesn't drop them. Runs BEFORE reconcile.
+bash tools/dm-extract.sh normalize-connections "<campaign-name>"
+
 # Reconcile missing locations: stub (with a source passage + bidirectional hub
 # link) or drop every location reference that doesn't resolve to a node. Runs
 # BEFORE the integrity gate so location refs resolve.

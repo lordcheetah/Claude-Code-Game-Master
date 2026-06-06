@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-06-06T20:11Z  done: world-kit-author-agent — kit-author agent derives non-5e ruleset.json  [ss-w7k2m9]
 - 2026-06-06T20:05Z  done: world-author-consolidator — serial consolidate + compile-canon  [ss-w7k2m9]
 - 2026-06-06T19:54Z  sliced: authored-world-grounding → 7 tickets in ready/ (consolidator+kit-author claimable; rest blockedBy-gated)  [ship-it]
 - 2026-06-06T19:54Z  prd: authored-world-grounding created  [ship-it]

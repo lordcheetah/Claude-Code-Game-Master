@@ -643,6 +643,13 @@ Separate location per room with `dungeon` field:
 
 **THE RULE**: If it happened, persist it BEFORE describing it to the player.
 
+**Advisory enforcement (hooks):** `.claude/settings.json` wires two non-blocking
+hooks (config in `.claude/hooks/`). A `PostToolUse` hook logs every state-writing
+tool call to `.ship-it/state-writes.log` so missed persists can be audited; a
+`Stop` hook autosaves the active session (`dm-session.sh save autosave`) so a turn
+never loses progress. Both always exit 0 and never block — they are a safety net,
+not a gate. The rule above is still yours to follow.
+
 | Change Type | Command |
 |-------------|---------|
 | Gold | `bash tools/dm-player.sh gold "[name]" [+/-amount]` |

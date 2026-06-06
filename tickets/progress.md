@@ -15,3 +15,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T04:31Z  done: reactivity-tick-wiring — tick wired into move/time; fires per-scene with dedup  [ss-tix001]
 - 2026-06-06T04:41Z  done: consequence-provenance-log — why-fired log + one-beat rollback  [ss-tix001]
 - 2026-06-06T04:43Z  done: session-identity-metadata — structured end footer + pair-based session count + cliffhanger surfacing  [ss-tix001]
+- 2026-06-06T04:46Z  done: advisory-hooks — PostToolUse state-write log + Stop autosave (non-blocking)  [ss-tix001]

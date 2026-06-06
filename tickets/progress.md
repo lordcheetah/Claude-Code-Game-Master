@@ -53,3 +53,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T17:20Z  done: opening-beat-seed — start at arc opening (position + first beat + session-log hook)  [ss-7q3w9z]
 - 2026-06-06T17:23Z  done: connection-key-normalize — canonicalize connection.to, move rule-phrases to notes  [ss-7q3w9z]
 - 2026-06-06T17:25Z  done: item-correctness — clear lore-cursed, retype wondrous, null non-price value  [ss-7q3w9z]
+- 2026-06-06T17:27Z  done: minor-entity-stubs-taxonomy — stub plot-referenced NPCs dropped by cap; full chain passes strict integrity  [ss-7q3w9z]

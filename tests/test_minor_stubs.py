@@ -1,0 +1,48 @@
+"""Tests for minor-entity-stubs-taxonomy."""
+
+import json
+from lib.minor_stubs import stub_missing_npcs, validate_plot_types, run_stubs
+
+
+def test_unresolved_plot_npc_gets_stubbed():
+    npcs = {"Carl": {}}
+    plots = {"P": {"npcs": ["Carl", "Ji-Hoon"]}}
+    report = stub_missing_npcs(npcs, plots)
+    assert "Ji-Hoon" in npcs
+    assert npcs["Ji-Hoon"]["source"] == "auto-stub"
+    assert plots["P"]["npcs"] == ["Carl", "Ji-Hoon"]
+    assert "Ji-Hoon" in report["stubbed"]
+
+
+def test_resolvable_ref_canonicalized_not_stubbed():
+    npcs = {"Donut": {}}
+    plots = {"P": {"npcs": ["Princess Donut"]}}
+    report = stub_missing_npcs(npcs, plots)
+    assert plots["P"]["npcs"] == ["Donut"]      # canonicalized, not stubbed
+    assert report["stubbed"] == []
+    assert "Princess Donut" not in npcs
+
+
+def test_optional_type_is_valid_and_kept():
+    plots = {"Court": {"type": "optional"}}
+    report = validate_plot_types(plots)
+    assert plots["Court"]["type"] == "optional"   # documented enum value
+    assert report["reclassified"] == []
+
+
+def test_off_enum_type_normalized_to_side():
+    plots = {"Weird": {"type": "epilogue"}, "Blank": {}}
+    validate_plot_types(plots)
+    assert plots["Weird"]["type"] == "side"
+    assert plots["Blank"]["type"] == "side"
+
+
+def test_run_stubs_makes_all_plot_npcs_resolve(tmp_path):
+    (tmp_path / "npcs.json").write_text(json.dumps({"Carl": {}}))
+    (tmp_path / "plots.json").write_text(json.dumps({"P": {"npcs": ["Carl", "Elle McGib"], "type": "main"}}))
+    run_stubs(str(tmp_path))
+    npcs = json.loads((tmp_path / "npcs.json").read_text())
+    plots = json.loads((tmp_path / "plots.json").read_text())
+    # every plot.npcs ref now exists as a key
+    for ref in plots["P"]["npcs"]:
+        assert ref in npcs

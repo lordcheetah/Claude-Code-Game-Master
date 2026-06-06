@@ -269,6 +269,11 @@ bash tools/dm-extract.sh normalize-connections "<campaign-name>"
 # BEFORE the integrity gate so location refs resolve.
 bash tools/dm-extract.sh reconcile "<campaign-name>"
 
+# Stub missing NPC refs: the hard cap can drop NPCs that plots still reference;
+# create a minimal stub for each so plot.npcs resolves, and normalize plot types.
+# Runs BEFORE the integrity gate.
+bash tools/dm-extract.sh stub-npcs "<campaign-name>"
+
 # Integrity gate: canonicalize every cross-reference (plot.npcs, plot.locations,
 # npc.location_tags, location.connections) to a real entity key via the alias
 # resolver, recording variants as `aliases`. Strict by default — FAILS the import

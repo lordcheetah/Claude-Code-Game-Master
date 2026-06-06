@@ -237,23 +237,68 @@ Use AskUserQuestion with these options:
 
 ---
 
-## Step 6: Copy Extracted Files and Archive
+## Step 6: Normalize Extracted Files to Campaign Root, then Archive
 
 After all agents complete:
 
 ```bash
-# Copy extracted files to campaign root
-CAMPAIGN_DIR="world-state/campaigns/<campaign-name>"
-cp "$CAMPAIGN_DIR/extracted/npcs.json" "$CAMPAIGN_DIR/npcs.json"
-cp "$CAMPAIGN_DIR/extracted/locations.json" "$CAMPAIGN_DIR/locations.json"
-cp "$CAMPAIGN_DIR/extracted/items.json" "$CAMPAIGN_DIR/items.json"
-cp "$CAMPAIGN_DIR/extracted/plots.json" "$CAMPAIGN_DIR/plots.json"
+# Normalize extracted/*.json into the campaign root in the flat {name: {...}}
+# shape the runtime managers require. Extractor agents inconsistently wrap their
+# output (e.g. {"npcs": {...}}, and items.json carries document/metadata keys);
+# a plain `cp` would leave those wrappers in place and the runtime would read one
+# giant entity named "npcs". `normalize` unwraps them. NEVER `cp` these files.
+bash tools/dm-extract.sh normalize "<campaign-name>"
 
 # Archive the extracted/ folder (temporary working directory)
 bash tools/dm-extract.sh archive "<campaign-name>"
 ```
 
-**Note**: The `extracted/` folder is a temporary working directory. After copying files to the campaign root, archive it to keep the campaign folder clean.
+**Note**: The `extracted/` folder is a temporary working directory. `normalize`
+writes the flat `npcs.json` / `locations.json` / `items.json` / `plots.json` to
+the campaign root; archive `extracted/` afterward to keep the folder clean.
+
+---
+
+## Step 6.5: Establish the World Kit (ruleset.json) — REQUIRED
+
+Every campaign's rules come from its **World Kit** (`ruleset.json`). If you skip
+this, `WorldKit` silently falls back to `DEFAULT_RULESET` ("Generic Adventure"
+with an EMPTY attribute list and the wrong name) — the imported book will play on
+hollow, mismatched rules. Do not skip.
+
+```bash
+CAMPAIGN_DIR="world-state/campaigns/<campaign-name>"
+[ -f "$CAMPAIGN_DIR/ruleset.json" ] && echo "World Kit already present" || echo "NO World Kit — must create one"
+```
+
+If no `ruleset.json` exists, author one **inferred from the source book**:
+
+- **Same universe as an existing campaign?** (e.g. another Dungeon Crawler Carl
+  book) Copy that campaign's `ruleset.json` — the kit is universe-level, not
+  campaign state: `cp world-state/campaigns/<sibling>/ruleset.json "$CAMPAIGN_DIR/ruleset.json"`
+- **Otherwise**, write a kit that fits the book. Baseline template (adjust to the
+  source — sci-fi/horror/non-D&D books often need different attributes or a
+  `resource-axis` / `milestone` progression rather than levels):
+
+```bash
+cat > "$CAMPAIGN_DIR/ruleset.json" <<'JSON'
+{
+  "name": "<World/Book Name>",
+  "stat_schema": { "attributes": ["str","con","dex","int","wis","cha"], "vitals": ["hp"] },
+  "progression": { "model": "milestone" },
+  "resolution": { "model": "d20-vs-dc" },
+  "active_agents": ["monster-manual","rules-master","spell-caster","gear-master","loot-dropper","npc-builder"],
+  "rules_doc": null
+}
+JSON
+```
+
+Verify the kit (read the file directly — `world_kit.py info` reads the *active*
+campaign, which isn't switched until Step 7):
+```bash
+uv run python -c "import json; k=json.load(open('$CAMPAIGN_DIR/ruleset.json')); print('Kit:', k['name'], '| attrs:', k['stat_schema']['attributes'])"
+```
+Confirm `name` is the book's world (not "Generic Adventure") and the attribute list is non-empty.
 
 ---
 

@@ -24,6 +24,8 @@ D&D Module Extraction Tool
 Commands:
   prepare <file> [name]     Extract text and create chunks for agent processing
                             Optional: specify campaign name (defaults to filename)
+  normalize [campaign]      Copy extracted/*.json to campaign root, unwrapping
+                            agent wrapper keys into the flat {name:...} runtime shape
   merge [campaign] [--cleanup]  Combine results from all extraction agents
                             --cleanup: Archive extracted/ folder after merge
   save [strategy] [campaign] Save extracted content to world state
@@ -384,10 +386,70 @@ validate_extraction() {
     fi
 }
 
+normalize_extracted() {
+    # Copy extracted/*.json to the campaign root in the flat {name: {...}} shape
+    # the runtime managers expect. Extractor agents inconsistently wrap their
+    # output (e.g. {"npcs": {...}}, plus stray document/metadata keys on items);
+    # this unwraps using the same d.get(key, d) heuristic as validate_extraction.
+    local campaign_name="$1"
+
+    if [ -z "$campaign_name" ]; then
+        campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
+        if [ -z "$campaign_name" ]; then
+            echo "Error: No campaign specified and no active campaign found."
+            echo "Usage: dm-extract.sh normalize <campaign-name>"
+            exit 1
+        fi
+    fi
+
+    CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+
+    if [ ! -d "$CAMPAIGN_DIR/extracted" ]; then
+        echo "Error: No extracted/ directory for campaign: $campaign_name"
+        echo "Run extraction agents first."
+        exit 1
+    fi
+
+    echo "Normalizing extraction into campaign root: $campaign_name"
+    echo "================================="
+
+    for type in npcs locations items plots; do
+        case "$type" in
+            npcs) key="npcs" ;;
+            locations) key="locations" ;;
+            items) key="items" ;;
+            plots) key="plot_hooks" ;;
+        esac
+        $PYTHON_CMD - "$CAMPAIGN_DIR/extracted/${type}.json" "$CAMPAIGN_DIR/${type}.json" "$key" "$type" <<'PY'
+import json, sys
+src, dst, key, type_name = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+try:
+    d = json.load(open(src))
+except FileNotFoundError:
+    print(f"  {type_name}: MISSING (skipped)")
+    sys.exit(0)
+# Unwrap a {key: {...}} wrapper if present; otherwise the file is already flat.
+flat = d.get(key, d) if isinstance(d, dict) else d
+if not isinstance(flat, dict):
+    print(f"  {type_name}: unexpected shape, copied verbatim")
+    flat = d
+json.dump(flat, open(dst, "w"), indent=2)
+print(f"  {type_name}: {len(flat)} entities -> {type_name}.json (flat)")
+PY
+    done
+
+    echo ""
+    echo "Normalized to flat format. Runtime tools can now read these files."
+}
+
 # Main command handling
 case "$1" in
     prepare)
         prepare_document "$2" "$3"
+        ;;
+
+    normalize)
+        normalize_extracted "$2"
         ;;
 
     merge)

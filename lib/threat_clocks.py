@@ -75,7 +75,7 @@ class ThreatClockManager(EntityManager):
                       trigger_type: str = None, match: str = None) -> str:
         """Record a dramatic-choice fork as a consequence — the fork→reactive-world wire.
 
-        The DM presents `prompt` with stakes-bearing forks at an inflection point;
+        The GM presents `prompt` with stakes-bearing forks at an inflection point;
         the player's chosen fork is written into the consequence engine so it pays
         off later (optionally with a structured trigger). Returns the consequence id.
         """
@@ -86,7 +86,7 @@ class ThreatClockManager(EntityManager):
 
     @staticmethod
     def render(clocks: Dict[str, Any]) -> str:
-        """Render clocks as filled/empty segment bars for the DM-visible context."""
+        """Render clocks as filled/empty segment bars for the GM-visible context."""
         lines = []
         for name, c in clocks.items():
             cur, mx = int(c.get("current", 0)), int(c.get("max", 1))

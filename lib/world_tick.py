@@ -4,7 +4,7 @@ Between-session world tick — the world keeps living when you look away.
 
 On session end/start a world-builder pass proposes 1-3 SMALL off-screen
 developments (grounded in source RAG + existing plots — that generation is a
-model call in /dm). This module owns the deterministic, safe machinery: enforce
+model call in /gm). This module owns the deterministic, safe machinery: enforce
 the cap, write each development as a consequence, log the tick for provenance, and
 allow a one-tick rollback so a misfire never silently rewrites the world.
 """

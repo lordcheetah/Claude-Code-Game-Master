@@ -2,7 +2,7 @@
 
 tick() fires matching consequences once per scene (dedup via last_fired_key) and
 re-arms when the scene changes; tick_from_session() builds the world_state from
-campaign state. The wrappers (dm-session.sh move, dm-time.sh) call this so firing
+campaign state. The wrappers (gm-session.sh move, gm-time.sh) call this so firing
 is automatic, not eyeballed.
 """
 

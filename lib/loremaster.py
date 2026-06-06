@@ -6,7 +6,7 @@ Instead of stapling nearest-neighbor chunks, the Loremaster uses the coarse inde
 to FIND the relevant chapter, then reads a large span and returns a grounded
 brief. Briefs are cached PER LOCATION and a deep read is gated to new/important
 scenes — routine revisits reuse the cache, so the expensive read never fires every
-turn. (The voice-grounded synthesis of the brief is the model's job in /dm; this
+turn. (The voice-grounded synthesis of the brief is the model's job in /gm; this
 module owns the find/cache/gate/observe machinery + the source excerpt.)
 """
 

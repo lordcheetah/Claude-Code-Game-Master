@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Base class for all entity managers in the DM system.
+Base class for all entity managers in the GM system.
 Provides common initialization and CRUD patterns.
 """
 

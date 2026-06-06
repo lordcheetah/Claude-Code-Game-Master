@@ -504,61 +504,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dm-claude"
-version = "0.2.0"
-source = { editable = "." }
-dependencies = [
-    { name = "anthropic" },
-    { name = "pdfplumber" },
-    { name = "pypdf2" },
-    { name = "python-docx" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "black" },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-full = [
-    { name = "chromadb" },
-    { name = "elevenlabs" },
-    { name = "sentence-transformers" },
-]
-rag = [
-    { name = "chromadb" },
-    { name = "sentence-transformers" },
-]
-voice = [
-    { name = "elevenlabs" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", specifier = ">=0.76.0" },
-    { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
-    { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.0" },
-    { name = "dm-claude", extras = ["rag"], marker = "extra == 'full'" },
-    { name = "dm-claude", extras = ["voice"], marker = "extra == 'full'" },
-    { name = "elevenlabs", marker = "extra == 'voice'", specifier = ">=2.8.1" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "pdfplumber", specifier = ">=0.11.9" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.4.0" },
-    { name = "pypdf2", specifier = ">=3.0.1" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "python-docx", specifier = ">=1.2.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "requests", specifier = ">=2.31.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=2.2.0" },
-]
-provides-extras = ["voice", "rag", "full", "dev"]
-
-[[package]]
 name = "docstring-parser"
 version = "0.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -618,6 +563,61 @@ sdist = { url = "https://files.pythonhosted.org/packages/d5/7d/5df2650c57d47c572
 wheels = [
     { url = "https://files.pythonhosted.org/packages/01/c9/97cc5aae1648dcb851958a3ddf73ccd7dbe5650d95203ecb4d7720b4cdbf/fsspec-2026.1.0-py3-none-any.whl", hash = "sha256:cb76aa913c2285a3b49bdd5fc55b1d7c708d7208126b60f2eb8194fe1b4cbdcc", size = 201838, upload-time = "2026-01-09T15:21:34.041Z" },
 ]
+
+[[package]]
+name = "gm-claude"
+version = "0.2.0"
+source = { editable = "." }
+dependencies = [
+    { name = "anthropic" },
+    { name = "pdfplumber" },
+    { name = "pypdf2" },
+    { name = "python-docx" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "black" },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+full = [
+    { name = "chromadb" },
+    { name = "elevenlabs" },
+    { name = "sentence-transformers" },
+]
+rag = [
+    { name = "chromadb" },
+    { name = "sentence-transformers" },
+]
+voice = [
+    { name = "elevenlabs" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", specifier = ">=0.76.0" },
+    { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
+    { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.0" },
+    { name = "elevenlabs", marker = "extra == 'voice'", specifier = ">=2.8.1" },
+    { name = "gm-claude", extras = ["rag"], marker = "extra == 'full'" },
+    { name = "gm-claude", extras = ["voice"], marker = "extra == 'full'" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
+    { name = "pdfplumber", specifier = ">=0.11.9" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.4.0" },
+    { name = "pypdf2", specifier = ">=3.0.1" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "python-docx", specifier = ">=1.2.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "requests", specifier = ">=2.31.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=2.2.0" },
+]
+provides-extras = ["voice", "rag", "full", "dev"]
 
 [[package]]
 name = "googleapis-common-protos"

@@ -132,7 +132,7 @@ The Floating City (13 words):
 
 2. **Search for Connections**
    ```bash
-   dm-search.sh "[location type] [related elements]"
+   gm-search.sh "[location type] [related elements]"
    ```
 
 3. **Add Appropriate Detail**
@@ -143,7 +143,7 @@ The Floating City (13 words):
 
 4. **Save to World State**
    ```bash
-   bash tools/dm-location.sh describe "[Location]" "[appropriate detail level]"
+   bash tools/gm-location.sh describe "[Location]" "[appropriate detail level]"
    ```
 
 ---

@@ -1,6 +1,6 @@
 """Regression tests for untruncate-campaign-rules.
 
-The pre-fix code cut every campaign_rules value to 220 chars, starving the DM of
+The pre-fix code cut every campaign_rules value to 220 chars, starving the GM of
 its own world's operating manual (dm_checklist, achievement_checks, ...). These
 assert the bespoke rules now render in full under a clear "follow exactly" label.
 """

@@ -1,6 +1,6 @@
 # AGENTS
 
-Project agent guidance. The full DM ruleset and runtime behavior live in `CLAUDE.md`.
+Project agent guidance. The full GM ruleset and runtime behavior live in `CLAUDE.md`.
 
 ## Tickets
 

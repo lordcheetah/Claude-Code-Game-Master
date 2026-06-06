@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stats-enrichment proxy for combat-relevant NPCs.
 
-Extracted NPCs have null ac/hp/cr, so a DM can't run an encounter without inventing
+Extracted NPCs have null ac/hp/cr, so a GM can't run an encounter without inventing
 numbers. This assigns a difficulty-TIER proxy (hp + a cr/difficulty label) to
 combat-relevant NPCs and explicitly flags non-combatants as statless (distinct from
 "not yet enriched"). The proxy is kit-agnostic and intentionally coarse — exact stat

@@ -74,7 +74,7 @@ When players cast spells, ask about magical effects, or need spell information, 
 - Highlight ritual spells (don't need preparation)
 
 ### 3. Counterspell Situations
-**DM**: "The lich casts disintegrate at the fighter"
+**GM**: "The lich casts disintegrate at the fighter"
 **Player**: "I counterspell!"
 **You**:
 - Explain counterspell mechanics
@@ -98,7 +98,7 @@ When players cast spells, ask about magical effects, or need spell information, 
 - Track active concentration effects
 
 ### 6. Spell Identification
-**DM**: "The enemy wizard waves their hands and you're all engulfed in darkness"
+**GM**: "The enemy wizard waves their hands and you're all engulfed in darkness"
 **Player**: "What spell is that?"
 **You**:
 - Suggest likely spells (darkness, hunger of hadar)
@@ -155,7 +155,7 @@ When players cast spells, ask about magical effects, or need spell information, 
 
 ### 13. Wild Magic Surge
 **Player**: "I cast chaos bolt and rolled a 1 on wild magic"
-**DM**: "Roll on the wild magic table"
+**GM**: "Roll on the wild magic table"
 **You**:
 - Provide wild magic surge table reference
 - Explain surge mechanics
@@ -212,7 +212,7 @@ When players cast spells, ask about magical effects, or need spell information, 
 - Gold and time costs
 
 ### 20. Anti-Magic Field Navigation
-**DM**: "You enter an anti-magic field"
+**GM**: "You enter an anti-magic field"
 **Player**: "What happens to my active spells?"
 **You**:
 - All magic suppressed, not dispelled

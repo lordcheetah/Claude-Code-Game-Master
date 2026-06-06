@@ -42,10 +42,10 @@ uv run python features/character-creation/api/get_spells.py --class <class> --le
 ```bash
 # Save complete character from JSON data
 # This saves to the ACTIVE CAMPAIGN's character.json file
-bash tools/dm-player.sh save-json '<character_json>'
+bash tools/gm-player.sh save-json '<character_json>'
 
 # To verify the active campaign:
-bash tools/dm-campaign.sh info
+bash tools/gm-campaign.sh info
 
 # Example character JSON structure:
 # {
@@ -214,7 +214,7 @@ Save this character? (yes/no)
 
 When user confirms "yes", execute:
 ```bash
-bash tools/dm-player.sh save-json '{"name":"Character Name","race":"Race","class":"Class","level":1,"stats":{"str":15,"dex":14,"con":13,"int":12,"wis":10,"cha":8},"ac":16,"skills":{"athletics":5},"equipment":["Longsword","Shield"],"features":["Fighting Style"],"spells":{"cantrips":[],"level_1":[]},"background":"Background","alignment":"Alignment","bonds":"Bonds text","flaws":"Flaws text","ideals":"Ideals text","traits":"Traits text"}'
+bash tools/gm-player.sh save-json '{"name":"Character Name","race":"Race","class":"Class","level":1,"stats":{"str":15,"dex":14,"con":13,"int":12,"wis":10,"cha":8},"ac":16,"skills":{"athletics":5},"equipment":["Longsword","Shield"],"features":["Fighting Style"],"spells":{"cantrips":[],"level_1":[]},"background":"Background","alignment":"Alignment","bonds":"Bonds text","flaws":"Flaws text","ideals":"Ideals text","traits":"Traits text"}'
 ```
 
 Replace placeholder values with actual character data collected during creation process.
@@ -238,9 +238,9 @@ Your character has been saved to the active campaign.
 
 Your world and character are set up. You're ready to begin!
 
-To start your adventure, run: /dm
+To start your adventure, run: /gm
 
-Or type /dm to jump straight into the game.
+Or type /gm to jump straight into the game.
 ```
 
 ## Ability Score Generation
@@ -249,7 +249,7 @@ Offer these methods:
 1. **Standard Array**: 15, 14, 13, 12, 10, 8 (assign as desired)
 2. **Point Buy**: 27 points to spend (detailed rules if requested)
 3. **Roll 4d6 Drop Lowest**: Roll four dice, drop lowest, six times
-4. **DM's Choice**: You assign based on class/concept
+4. **GM's Choice**: You assign based on class/concept
 
 ## Dice Rolling
 

@@ -1,10 +1,10 @@
-# DM Claude
+# Game Master Claude
 
 **Drop in a book you own. Play *that book* as its own game.**
 
-Got a favorite fantasy novel? A classic adventure module? A weird pulp sci-fi paperback from the 70s? Drop the PDF in, and DM Claude reads it, builds a game out of it, and drops you into that world as whoever you want to be.
+Got a favorite fantasy novel? A classic adventure module? A weird pulp sci-fi paperback from the 70s? Drop the PDF in, and GM Claude reads it, builds a game out of it, and drops you into that world as whoever you want to be.
 
-Not a reskin. Not D&D-with-the-names-changed. When you import a book, DM Claude writes a **bespoke ruleset for that world** — its own stats, its own way of leveling up, its own signature systems (loot boxes, spice visions, train cars, whatever the book runs on). A Dune import plays like Dune. A *Dungeon Crawler Carl* import plays like *Dungeon Crawler Carl*. You don't need to know any of the rules — just say what you want to do.
+Not a reskin. Not D&D-with-the-names-changed. When you import a book, Game Master Claude writes a **bespoke ruleset for that world** — its own stats, its own way of leveling up, its own signature systems (loot boxes, spice visions, train cars, whatever the book runs on). A Dune import plays like Dune. A *Dungeon Crawler Carl* import plays like *Dungeon Crawler Carl*. You don't need to know any of the rules — just say what you want to do.
 
 The [Internet Archive](https://archive.org/) is a goldmine for this. Thousands of free books, modules, and old pulp novels. Jump into *IT* and help the bad guys. Drop into *Lord of the Rings* and play from Gollum's perspective. It's your call.
 
@@ -38,9 +38,9 @@ Then play in three steps:
 
 1. Drop a PDF into the `source-material/` folder
 2. Run `claude` to launch Claude Code
-3. Run `/dm` — the agent takes it from there
+3. Run `/gm` — the agent takes it from there
 
-`/dm` handles importing the book, building your character, and running the game. First thing it asks: **"Who are you in this world?"** — play a character lifted straight from the book, an original of your own, or a nameless traveler who wanders in. The mechanics get figured out behind the scenes.
+`/gm` handles importing the book, building your character, and running the game. First thing it asks: **"Who are you in this world?"** — play a character lifted straight from the book, an original of your own, or a nameless traveler who wanders in. The mechanics get figured out behind the scenes.
 
 ---
 
@@ -48,17 +48,17 @@ Then play in three steps:
 
 ### Every book becomes its own game
 
-When you import a document, DM Claude reads large spans of the actual text and writes a **World Bible** for it — voice, tone, factions, geography, timeline, and the systems that make that world tick. From the Bible it drafts a **World Kit**: a custom ruleset for *that* world. It shows you the draft, you confirm it, and you're playing.
+When you import a document, GM Claude reads large spans of the actual text and writes a **World Bible** for it — voice, tone, factions, geography, timeline, and the systems that make that world tick. From the Bible it drafts a **World Kit**: a custom ruleset for *that* world. It shows you the draft, you confirm it, and you're playing.
 
 The generic core underneath is deliberately thin — a single resolution system (roll vs. a difficulty), abstract health and conditions, and three ways to advance (story milestones, a resource you spend down, or classic XP levels). Everything with flavor — stat names, how combat feels, how you grow stronger — comes from the book. D&D 5e is just *one* possible kit, not the foundation.
 
 ### The world pushes the story to you
 
-Old version: the DM had to remember to go look things up. New version: **the world hands the right context to the DM at the right moment.** Every scene arrives pre-loaded with what came before — *previously on…*, the open plot threads, key facts, which NPCs are present and how they talk, the clocks ticking in the background, and any consequences about to land. No more stat-sheet amnesia where the DM knows your HP but forgot the cliffhanger.
+Old version: the GM had to remember to go look things up. New version: **the world hands the right context to the GM at the right moment.** Every scene arrives pre-loaded with what came before — *previously on…*, the open plot threads, key facts, which NPCs are present and how they talk, the clocks ticking in the background, and any consequences about to land. No more stat-sheet amnesia where the GM knows your HP but forgot the cliffhanger.
 
 ### The world keeps living
 
-- **Consequences fire on their own.** Pick a fight, make a promise, leave a body — DM Claude schedules the fallout and it triggers later when you return to a place or enough time passes. With a reason attached, and undoable if the timing's wrong.
+- **Consequences fire on their own.** Pick a fight, make a promise, leave a body — GM Claude schedules the fallout and it triggers later when you return to a place or enough time passes. With a reason attached, and undoable if the timing's wrong.
 - **Threat clocks tick.** Named pressures (a city collapsing in 10 days, a rival closing in) advance whether you're watching or not. When a clock runs out, a beat is due.
 - **Between sessions, the world moves.** A small, bounded set of off-screen developments advance while you're away — so the place feels alive when you come back.
 
@@ -68,7 +68,7 @@ Every NPC has a goal, a secret, a shifting mood, real relationships with you, an
 
 ### It remembers everything
 
-NPCs, locations, plot threads, facts, your whole history — all of it persists across sessions. DM Claude can recall prior events, keeps a tiered memoir of your campaign, and tracks what's canon-from-the-book versus what *you* made happen. Save and restore at any point.
+NPCs, locations, plot threads, facts, your whole history — all of it persists across sessions. GM Claude can recall prior events, keeps a tiered memoir of your campaign, and tracks what's canon-from-the-book versus what *you* made happen. Save and restore at any point.
 
 ---
 
@@ -85,7 +85,7 @@ You never see any of this — you just see the story — but if you want to pull
 
 ## Advanced
 
-Everything below is handled automatically by `/dm`. These are here if you want manual control.
+Everything below is handled automatically by `/gm`. These are here if you want manual control.
 
 ### One Command
 
@@ -93,11 +93,11 @@ There's really just one command you ever need:
 
 | Command | What it does |
 |---------|--------------|
-| `/dm` | **Everything.** Start or continue your story. From here the DM imports a book, builds a world, creates your character, runs a one-shot, saves, and shows your sheet — just talk to it. |
+| `/gm` | **Everything.** Start or continue your story. From here the GM imports a book, builds a world, creates your character, runs a one-shot, saves, and shows your sheet — just talk to it. |
 
-`/dm` also takes shortcuts if you want them: `/dm save`, `/dm character`, `/dm overview`.
+`/gm` also takes shortcuts if you want them: `/gm save`, `/gm character`, `/gm overview`.
 
-Under the hood, `/dm` calls these for you — you never have to run them yourself, but they exist for manual control:
+Under the hood, `/gm` calls these for you — you never have to run them yourself, but they exist for manual control:
 
 | Command | What it does |
 |---------|--------------|
@@ -116,14 +116,14 @@ The lean core loads these only when the moment calls for it:
 
 | Skill | Loaded when |
 |-------|-------------|
-| `dm-combat` | A fight breaks out |
-| `dm-spellcasting` | You cast something |
-| `dm-social` | You talk to / read an NPC |
-| `dm-skills` | You attempt something uncertain |
-| `dm-dungeon` | You enter a cave, ruin, or complex |
-| `dm-conditions` | A status effect is applied |
-| `dm-levelup` | You hit a milestone |
-| `dm-craft` | Narration and pacing wisdom |
+| `gm-combat` | A fight breaks out |
+| `gm-spellcasting` | You cast something |
+| `gm-social` | You talk to / read an NPC |
+| `gm-skills` | You attempt something uncertain |
+| `gm-dungeon` | You enter a cave, ruin, or complex |
+| `gm-conditions` | A status effect is applied |
+| `gm-levelup` | You hit a milestone |
+| `gm-craft` | Narration and pacing wisdom |
 
 ### Specialist Agents
 
@@ -143,28 +143,28 @@ Spawn automatically during play, invisibly:
 
 ### Bash Tools
 
-All tools follow the pattern `bash tools/dm-<tool>.sh <command> [args]`. Most accept `--json` for structured output.
+All tools follow the pattern `bash tools/gm-<tool>.sh <command> [args]`. Most accept `--json` for structured output.
 
 | Tool | Purpose |
 |------|---------|
-| `dm-campaign.sh` | Create, list, switch, delete campaigns |
-| `dm-session.sh` | Session lifecycle, party movement, save/restore |
-| `dm-context.sh` | Assemble scene context (world state + source passages) |
-| `dm-player.sh` | Player stats — health, progression, gold, inventory |
-| `dm-npc.sh` | NPCs — creation, updates, mood/goal/voice, party members |
-| `dm-location.sh` | Locations and connections |
-| `dm-plot.sh` | Quest and storyline tracking |
-| `dm-combat.sh` | Persisted, resumable combat tracking |
-| `dm-condition.sh` | Player conditions (poisoned, stunned, etc.) |
-| `dm-consequence.sh` | Schedule future events and triggers |
-| `dm-recall.sh` | Surface prior events from campaign memory |
-| `dm-note.sh` | Record world facts by category |
-| `dm-time.sh` | Advance in-game time |
-| `dm-search.sh` | Search world state and/or source material |
-| `dm-enhance.sh` | RAG-powered entity enrichment |
-| `dm-extract.sh` | Document import and extraction pipeline |
-| `dm-overview.sh` | Quick world-state summary |
-| `dm-reset.sh` | Reset campaign data |
+| `gm-campaign.sh` | Create, list, switch, delete campaigns |
+| `gm-session.sh` | Session lifecycle, party movement, save/restore |
+| `gm-context.sh` | Assemble scene context (world state + source passages) |
+| `gm-player.sh` | Player stats — health, progression, gold, inventory |
+| `gm-npc.sh` | NPCs — creation, updates, mood/goal/voice, party members |
+| `gm-location.sh` | Locations and connections |
+| `gm-plot.sh` | Quest and storyline tracking |
+| `gm-combat.sh` | Persisted, resumable combat tracking |
+| `gm-condition.sh` | Player conditions (poisoned, stunned, etc.) |
+| `gm-consequence.sh` | Schedule future events and triggers |
+| `gm-recall.sh` | Surface prior events from campaign memory |
+| `gm-note.sh` | Record world facts by category |
+| `gm-time.sh` | Advance in-game time |
+| `gm-search.sh` | Search world state and/or source material |
+| `gm-enhance.sh` | RAG-powered entity enrichment |
+| `gm-extract.sh` | Document import and extraction pipeline |
+| `gm-overview.sh` | Quick world-state summary |
+| `gm-reset.sh` | Reset campaign data |
 
 ### Dependencies
 
@@ -182,4 +182,4 @@ Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4
 
 ---
 
-Built by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). Your story awaits. Run `/dm` to begin.
+Built by [Sean Stobo](https://www.linkedin.com/in/sean-stobo/). Your story awaits. Run `/gm` to begin.

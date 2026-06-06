@@ -1,7 +1,7 @@
 [project]
-name = "dm-claude"
+name = "gm-claude"
 version = "0.2.0"
-description = "AI-powered D&D Dungeon Master assistant for running campaigns with Claude Code"
+description = "AI-powered D&D Game Master assistant for running campaigns with Claude Code"
 authors = [
     { name = "Sean Stobo" }
 ]
@@ -47,8 +47,8 @@ rag = [
 
 # Full installation (all features)
 full = [
-    "dm-claude[voice]",
-    "dm-claude[rag]",
+    "gm-claude[voice]",
+    "gm-claude[rag]",
 ]
 
 # Development dependencies

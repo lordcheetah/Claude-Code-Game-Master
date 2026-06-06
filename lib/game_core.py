@@ -106,7 +106,7 @@ class Progression:
 
 
 class MilestoneProgression(Progression):
-    """Story-beat advancement. No XP math; the DM grants milestones."""
+    """Story-beat advancement. No XP math; the GM grants milestones."""
 
     name = 'milestone'
 

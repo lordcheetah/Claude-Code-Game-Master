@@ -3,7 +3,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKILLS = ["dm-combat", "dm-spellcasting", "dm-conditions", "dm-levelup", "dm-dungeon"]
+SKILLS = ["gm-combat", "gm-spellcasting", "gm-conditions", "gm-levelup", "gm-dungeon"]
 
 
 def test_each_mechanics_skill_exists_with_valid_frontmatter():
@@ -33,5 +33,5 @@ def test_core_loop_remains_in_claudemd():
 
 
 def test_combat_skill_has_xp_table():
-    text = (ROOT / ".claude" / "skills" / "dm-combat" / "SKILL.md").read_text(encoding="utf-8")
+    text = (ROOT / ".claude" / "skills" / "gm-combat" / "SKILL.md").read_text(encoding="utf-8")
     assert "XP by Challenge Rating" in text and "25,000" in text

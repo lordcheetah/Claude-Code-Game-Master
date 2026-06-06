@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Player character management module for DM tools
+Player character management module for GM tools
 Handles PC operations: XP, HP, level progression, and character data
 """
 

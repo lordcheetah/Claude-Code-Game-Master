@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Location management module for DM tools
+Location management module for GM tools
 Handles location creation, connections, and descriptions
 """
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh - DM Claude Setup Script (zero to hero)
+# install.sh - GM Claude Setup Script (zero to hero)
 # Installs ALL dependencies for a fresh machine, then sets up the project.
 #
 # Usage:
@@ -45,7 +45,7 @@ fi
 print_header() {
     echo
     echo -e "${BOLD}${BLUE}================================================================${NC}"
-    echo -e "${BOLD}${BLUE}          DM Claude — Setup Script${NC}"
+    echo -e "${BOLD}${BLUE}          GM Claude — Setup Script${NC}"
     echo -e "${BOLD}${BLUE}================================================================${NC}"
     echo
 }
@@ -203,14 +203,14 @@ main() {
     fi
 
     # ------------------------------------------------------------------
-    # 4. jq (used by dm-extract.sh and other tools)
+    # 4. jq (used by gm-extract.sh and other tools)
     # ------------------------------------------------------------------
     step "4/7  jq (JSON processor)"
 
     if command -v jq >/dev/null 2>&1; then
         ok "jq found"
     else
-        warn "jq not found — some tools (dm-extract.sh) need it"
+        warn "jq not found — some tools (gm-extract.sh) need it"
         if [ "$OS_TYPE" = "mac" ]; then
             if confirm "Install jq via Homebrew?"; then
                 brew install jq
@@ -244,7 +244,7 @@ main() {
     else
         echo
         echo "  Select what to install:"
-        echo "    1) Core only         — basic DM tools, dice, session management"
+        echo "    1) Core only         — basic GM tools, dice, session management"
         echo "    2) Core + RAG        — adds PDF import & semantic search (recommended)"
         echo "    3) Full              — core + RAG + voice (ElevenLabs TTS)"
         echo "    4) Full + Dev tools  — everything + linting & formatting"
@@ -281,7 +281,7 @@ main() {
     # .env file
     if [ ! -f ".env" ]; then
         cat > .env << 'ENVEOF'
-# DM Claude Configuration
+# GM Claude Configuration
 #
 # Campaign Settings
 DEFAULT_CAMPAIGN_NAME="My Campaign"
@@ -330,7 +330,7 @@ ENVEOF
     fi
 
     # Session management
-    if bash tools/dm-session.sh status >/dev/null 2>&1; then
+    if bash tools/gm-session.sh status >/dev/null 2>&1; then
         ok "Session management works"
         PASS=$((PASS + 1))
     else
@@ -351,7 +351,7 @@ ENVEOF
         ok "jq available"
         PASS=$((PASS + 1))
     else
-        warn "jq missing — dm-extract.sh will have limited functionality"
+        warn "jq missing — gm-extract.sh will have limited functionality"
     fi
 
     # Claude Code
@@ -376,12 +376,12 @@ ENVEOF
     echo "    claude          Launch Claude Code in this project"
     echo "    /new-game       Create a new campaign world"
     echo "    /import          Import a PDF as a campaign"
-    echo "    /dm             Start playing!"
+    echo "    /gm             Start playing!"
     echo
     echo "  Useful commands:"
     echo "    uv run python lib/dice.py \"1d20+5\"     Roll dice"
-    echo "    bash tools/dm-search.sh \"query\"         Search world state"
-    echo "    bash tools/dm-overview.sh               Campaign overview"
+    echo "    bash tools/gm-search.sh \"query\"         Search world state"
+    echo "    bash tools/gm-overview.sh               Campaign overview"
     echo
     if ! command -v claude >/dev/null 2>&1; then
         echo -e "  ${YELLOW}NOTE:${NC} To play, you need Claude Code installed:"

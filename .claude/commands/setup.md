@@ -1,6 +1,6 @@
 # /setup - Automatic Installation
 
-Run this command to install DM Claude dependencies. This runs automatically on first launch.
+Run this command to install GM Claude dependencies. This runs automatically on first launch.
 
 ## Steps
 
@@ -33,7 +33,7 @@ Run this command to install DM Claude dependencies. This runs automatically on f
    ```bash
    if [ ! -f ".env" ]; then
        cat > .env << 'EOF'
-   # DM Claude Configuration
+   # GM Claude Configuration
    DEFAULT_CAMPAIGN_NAME="My Campaign"
    DEFAULT_STARTING_LOCATION="Thornwick"
    EOF
@@ -54,21 +54,21 @@ Run this command to install DM Claude dependencies. This runs automatically on f
 
 ---
 
-## Setup Complete → Hand Off to /dm
+## Setup Complete → Hand Off to /gm
 
-Installation is the only job of this command. `/dm` is the single front door for
+Installation is the only job of this command. `/gm` is the single front door for
 everything that follows — do NOT re-implement a campaign/import/new-game menu here.
-`/dm` already lists saved campaigns and offers **New Adventure** (Create World →
+`/gm` already lists saved campaigns and offers **New Adventure** (Create World →
 `/new-game`, Import Document → `/import`, or One-Shot).
 
 After install succeeds, display:
 
 ```
 ================================================================
-  ✅ DM CLAUDE IS READY
+  ✅ GM CLAUDE IS READY
 ================================================================
 
-  Run /dm to begin.
+  Run /gm to begin.
 
   • Pick up a saved campaign, or
   • Start a New Adventure: create a world, import a book,
@@ -76,5 +76,5 @@ After install succeeds, display:
 ================================================================
 ```
 
-Then route into `/dm` (its STEP 0 handles campaign selection, new-vs-import, and
+Then route into `/gm` (its STEP 0 handles campaign selection, new-vs-import, and
 returning players in one place).

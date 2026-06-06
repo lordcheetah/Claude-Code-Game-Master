@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Campaign management module for DM tools
+Campaign management module for GM tools
 Handles multi-campaign support with CRUD operations
 """
 
@@ -380,7 +380,7 @@ def main():
         campaigns = manager.list_campaigns()
         if not campaigns:
             print("No campaigns found")
-            print("Create one with: dm-campaign.sh create <name>")
+            print("Create one with: gm-campaign.sh create <name>")
         else:
             active = manager.get_active()
             print(f"{'':2}{'NAME':20}{'CHARACTER':25}{'SESSIONS':10}")

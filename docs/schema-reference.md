@@ -105,8 +105,8 @@ When `is_party_member: true`, the `character_sheet` contains:
 
 **HP Tracking:** Party members use `hp.current` and `hp.max`. Update with:
 ```bash
-bash tools/dm-npc.sh hp "Name" -5   # Damage
-bash tools/dm-npc.sh hp "Name" +3   # Heal
+bash tools/gm-npc.sh hp "Name" -5   # Damage
+bash tools/gm-npc.sh hp "Name" +3   # Heal
 ```
 
 ### Field Descriptions

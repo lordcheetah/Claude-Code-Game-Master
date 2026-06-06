@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Input validation module for DM tools
+Input validation module for GM tools
 Provides consistent validation across all tools
 """
 
@@ -9,7 +9,7 @@ from typing import Optional, List, Tuple
 
 
 class Validators:
-    """Input validation for DM system"""
+    """Input validation for GM system"""
 
     @staticmethod
     def validate_name(name: str) -> Tuple[bool, Optional[str]]:

@@ -15,7 +15,7 @@ except Exception:
     print('')" 2>/dev/null)
 
 case "$CMD" in
-    *dm-player.sh*|*dm-npc.sh*|*dm-session.sh*move*|*dm-consequence.sh*add*|*dm-condition.sh*)
+    *gm-player.sh*|*gm-npc.sh*|*gm-session.sh*move*|*gm-consequence.sh*add*|*gm-condition.sh*)
         mkdir -p "$DIR/.ship-it" 2>/dev/null
         printf '%s STATE-WRITE: %s\n' "$(date -u +%FT%TZ 2>/dev/null)" "$CMD" \
             >> "$DIR/.ship-it/state-writes.log" 2>/dev/null

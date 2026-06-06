@@ -114,9 +114,9 @@ instructions: |
 
   Use the RAG query tool to find relevant chunks:
   ```bash
-  bash tools/dm-search.sh --rag-only "quest mission objective goal reward" 50
-  bash tools/dm-search.sh --rag-only "story plot mystery secret conspiracy" 30
-  bash tools/dm-search.sh --rag-only "must need to find defeat save" 30
+  bash tools/gm-search.sh --rag-only "quest mission objective goal reward" 50
+  bash tools/gm-search.sh --rag-only "story plot mystery secret conspiracy" 30
+  bash tools/gm-search.sh --rag-only "must need to find defeat save" 30
   ```
 
   Run multiple queries with different terms to ensure coverage:

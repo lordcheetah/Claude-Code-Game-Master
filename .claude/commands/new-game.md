@@ -22,7 +22,7 @@ Wait for user response. Store as `CAMPAIGN_NAME`.
 
 ### Check if Campaign Already Exists
 ```bash
-bash tools/dm-campaign.sh list
+bash tools/gm-campaign.sh list
 ```
 
 If a campaign with this name already exists, ask user:
@@ -32,8 +32,8 @@ If a campaign with this name already exists, ask user:
 
 ### Create New Campaign
 ```bash
-bash tools/dm-campaign.sh create "<CAMPAIGN_NAME>"
-bash tools/dm-campaign.sh switch "<CAMPAIGN_NAME>"
+bash tools/gm-campaign.sh create "<CAMPAIGN_NAME>"
+bash tools/gm-campaign.sh switch "<CAMPAIGN_NAME>"
 ```
 
 ---
@@ -146,8 +146,8 @@ Based on the setting type, create the starting location with full detail:
 - Local secrets and current events
 
 ```bash
-bash tools/dm-location.sh add "[Starting Location Name]" "center of the settlement"
-bash tools/dm-location.sh describe "[Starting Location Name]" "[detailed description]"
+bash tools/gm-location.sh add "[Starting Location Name]" "center of the settlement"
+bash tools/gm-location.sh describe "[Starting Location Name]" "[detailed description]"
 ```
 
 ### Generate Supporting Locations
@@ -158,8 +158,8 @@ Create 3-4 connected locations with moderate detail (50-80 words each):
 - A place representing danger or mystery
 
 ```bash
-bash tools/dm-location.sh add "[Location Name]" "[position relative to start]"
-bash tools/dm-location.sh connect "[Start]" "[Location]" "[path description]"
+bash tools/gm-location.sh add "[Location Name]" "[position relative to start]"
+bash tools/gm-location.sh connect "[Start]" "[Location]" "[path description]"
 ```
 
 ### Generate NPCs
@@ -173,8 +173,8 @@ Create 6 interconnected NPCs:
 6. **Local Character** - Adds flavor and humor
 
 ```bash
-bash tools/dm-npc.sh create "[Name]" "[description]" "[attitude]"
-bash tools/dm-npc.sh tag-location "[Name]" "[location]"
+bash tools/gm-npc.sh create "[Name]" "[description]" "[attitude]"
+bash tools/gm-npc.sh tag-location "[Name]" "[location]"
 ```
 
 ### Generate Plot Hooks
@@ -194,9 +194,9 @@ Create three interconnected storylines:
 - Only hints initially
 
 ```bash
-bash tools/dm-note.sh "plot_local" "[local conflict description]"
-bash tools/dm-note.sh "plot_regional" "[regional mystery description]"
-bash tools/dm-note.sh "plot_world" "[world event hints]"
+bash tools/gm-note.sh "plot_local" "[local conflict description]"
+bash tools/gm-note.sh "plot_regional" "[regional mystery description]"
+bash tools/gm-note.sh "plot_world" "[world event hints]"
 ```
 
 ### Schedule Consequences
@@ -204,9 +204,9 @@ bash tools/dm-note.sh "plot_world" "[world event hints]"
 Plant future events:
 
 ```bash
-bash tools/dm-consequence.sh add "[Hook to draw players in]" "next session"
-bash tools/dm-consequence.sh add "[Strange event occurs]" "2 days"
-bash tools/dm-consequence.sh add "[Rumor arrives from afar]" "1 week"
+bash tools/gm-consequence.sh add "[Hook to draw players in]" "next session"
+bash tools/gm-consequence.sh add "[Strange event occurs]" "2 days"
+bash tools/gm-consequence.sh add "[Rumor arrives from afar]" "1 week"
 ```
 
 ### Update Status
@@ -224,7 +224,7 @@ As each element completes:
 ## PHASE 6: UPDATE CAMPAIGN OVERVIEW
 
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 
 uv run python -c "
 import json
@@ -256,7 +256,7 @@ with open('$CAMPAIGN_DIR/campaign-overview.json', 'w') as f:
 ## PHASE 7: INITIALIZE SESSION LOG
 
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 cat > "$CAMPAIGN_DIR/session-log.md" << EOF
 # Session Log - [CAMPAIGN_NAME]
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Plot management module for DM tools
+Plot management module for GM tools
 Handles plot listing, searching, and status updates
 """
 
@@ -402,7 +402,7 @@ class PlotManager(EntityManager):
 
     def format_threads(self, threads: Dict[str, List[Dict]]) -> str:
         """
-        Format active threads for display — DM notes style, not a database query.
+        Format active threads for display — GM notes style, not a database query.
         """
         has_any = any(threads[t] for t in threads)
         if not has_any:
@@ -492,7 +492,7 @@ def main():
     counts_parser = subparsers.add_parser('counts', help='Get plot counts')
 
     # Active threads summary
-    subparsers.add_parser('threads', help='Show active story threads (DM dashboard)')
+    subparsers.add_parser('threads', help='Show active story threads (GM dashboard)')
 
     args = parser.parse_args()
 

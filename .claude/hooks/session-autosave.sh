@@ -7,7 +7,7 @@ DIR="${CLAUDE_PROJECT_DIR:-.}"
 cd "$DIR" 2>/dev/null || exit 0
 
 if [ -f world-state/active-campaign.txt ]; then
-    bash tools/dm-session.sh save autosave >/dev/null 2>&1
+    bash tools/gm-session.sh save autosave >/dev/null 2>&1
 fi
 
 exit 0

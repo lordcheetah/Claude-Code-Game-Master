@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Time management module for DM tools."""
+"""Time management module for GM tools."""
 
 import json
 import sys

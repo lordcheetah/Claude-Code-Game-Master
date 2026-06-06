@@ -144,9 +144,9 @@ Justification: Remains of previous adventurer, appropriate for tier 1 party with
 ═══════════════════════════════════════════════════════════════
 INVENTORY COMMANDS (run these to persist loot):
 ═══════════════════════════════════════════════════════════════
-bash tools/dm-player.sh inventory "[CHARACTER]" add "Silvered Shortsword"
-bash tools/dm-player.sh inventory "[CHARACTER]" add "Potion of Healing"
-bash tools/dm-player.sh gold "[CHARACTER]" +47
+bash tools/gm-player.sh inventory "[CHARACTER]" add "Silvered Shortsword"
+bash tools/gm-player.sh inventory "[CHARACTER]" add "Potion of Healing"
+bash tools/gm-player.sh gold "[CHARACTER]" +47
 ═══════════════════════════════════════════════════════════════
 
 Getting detailed stats...
@@ -157,13 +157,13 @@ Getting detailed stats...
 ## Integration with System
 
 **Seamless Workflow:**
-- DM: "What loot does the orc chief drop?"
+- GM: "What loot does the orc chief drop?"
 - You: Select appropriate items, roll for specifics
 - Call gear-master agent for full details
-- Present complete loot package to DM
+- Present complete loot package to GM
 
 You are the bridge between "I need loot" and "here are the complete item statistics" - making treasure generation fast, balanced, and exciting for ongoing gameplay.
 
 IMPORTANT: USE `grep -c '"Common"' features/loot/static/loot_tables_by_rarity.json` - the file is too big to read all of, just look at the rarity you need.
 
-**NOTE**: This agent generates loot and provides ready-to-run inventory commands. The DM must run the provided commands to persist loot to the character's inventory.
+**NOTE**: This agent generates loot and provides ready-to-run inventory commands. The GM must run the provided commands to persist loot to the character's inventory.

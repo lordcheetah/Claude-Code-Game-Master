@@ -96,9 +96,9 @@ instructions: |
 
   Use the RAG query tool to find relevant chunks:
   ```bash
-  bash tools/dm-search.sh --rag-only "locations places rooms areas floor" 50
-  bash tools/dm-search.sh --rag-only "saferoom dungeon building town" 30
-  bash tools/dm-search.sh --rag-only "[specific location name]" 20
+  bash tools/gm-search.sh --rag-only "locations places rooms areas floor" 50
+  bash tools/gm-search.sh --rag-only "saferoom dungeon building town" 30
+  bash tools/gm-search.sh --rag-only "[specific location name]" 20
   ```
 
   Run multiple queries with different terms to ensure coverage:

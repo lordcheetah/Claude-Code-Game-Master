@@ -1,6 +1,6 @@
-# Contributing to DM Claude
+# Contributing to GM Claude
 
-Thank you for your interest in contributing to DM Claude! This guide will help you get started with contributing to the project.
+Thank you for your interest in contributing to GM Claude! This guide will help you get started with contributing to the project.
 
 ## Code of Conduct
 
@@ -111,9 +111,9 @@ docs: update README with new voice commands
 
 ### Adding New Tools
 
-To add a new DM tool:
+To add a new GM tool:
 
-1. Create the script in `tools/dm-yourfeature.sh`
+1. Create the script in `tools/gm-yourfeature.sh`
 2. Source `common.sh` for utilities
 3. Follow the existing pattern:
    - Argument parsing
@@ -124,14 +124,14 @@ To add a new DM tool:
 Example template:
 ```bash
 #!/bin/bash
-# dm-yourfeature.sh - Description
+# gm-yourfeature.sh - Description
 
 # Source common utilities
 source "$(dirname "$0")/common.sh"
 
 # Usage check
 if [ "$#" -lt 1 ]; then
-    echo "Usage: dm-yourfeature.sh <action> [args]"
+    echo "Usage: gm-yourfeature.sh <action> [args]"
     exit 1
 fi
 
@@ -171,7 +171,7 @@ To add a new Claude agent:
 
 Understanding the project structure helps with contributions:
 
-- `tools/` - Core bash scripts for DM operations
+- `tools/` - Core bash scripts for GM operations
 - `lib/` - Python utility libraries
 - `features/` - D&D 5e specific features
 - `world-state/` - Campaign data storage
@@ -191,4 +191,4 @@ Contributors will be recognized in:
 - Release notes
 - Our Discord server
 
-Thank you for helping make DM Claude better for everyone!
+Thank you for helping make GM Claude better for everyone!

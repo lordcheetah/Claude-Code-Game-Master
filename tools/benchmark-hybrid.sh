@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/common.sh"
 
-echo "=== DM System Architecture Performance Comparison ==="
+echo "=== GM System Architecture Performance Comparison ==="
 echo ""
 
 # Test 1: Simple operation (inline Python vs module)
@@ -71,11 +71,11 @@ echo "Test 3: Code Maintainability Comparison"
 echo "---------------------------------------"
 
 # Count lines of code
-NPC_BASH_LINES=$(wc -l < tools/dm-npc.sh)
+NPC_BASH_LINES=$(wc -l < tools/gm-npc.sh)
 MODULE_LINES=$(wc -l < lib/npc_manager.py)
 
-echo "Hybrid Architecture (dm-npc.sh migration complete):"
-echo "  - dm-npc.sh: $NPC_BASH_LINES lines (bash interface)"
+echo "Hybrid Architecture (gm-npc.sh migration complete):"
+echo "  - gm-npc.sh: $NPC_BASH_LINES lines (bash interface)"
 echo "  - lib/npc_manager.py: $MODULE_LINES lines (Python logic)"
 echo "  - Total: $((NPC_BASH_LINES + MODULE_LINES)) lines"
 echo "  - Original was ~300 lines (65% reduction achieved)"

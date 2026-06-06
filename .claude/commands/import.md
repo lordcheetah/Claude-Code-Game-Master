@@ -71,7 +71,7 @@ Reading your adventure and preparing it for play...
 
 Run the prepare command:
 ```bash
-bash tools/dm-extract.sh prepare "<file-path>" "<campaign-name>"
+bash tools/gm-extract.sh prepare "<file-path>" "<campaign-name>"
 ```
 
 After completion, display what was processed:
@@ -90,10 +90,10 @@ Run sample queries to show the user what content is available:
 
 ```bash
 # Sample queries to detect content types
-bash tools/dm-search.sh --rag-only "character name person NPC" 5
-bash tools/dm-search.sh --rag-only "location place room dungeon" 5
-bash tools/dm-search.sh --rag-only "item treasure weapon magic" 5
-bash tools/dm-search.sh --rag-only "quest mission objective plot" 5
+bash tools/gm-search.sh --rag-only "character name person NPC" 5
+bash tools/gm-search.sh --rag-only "location place room dungeon" 5
+bash tools/gm-search.sh --rag-only "item treasure weapon magic" 5
+bash tools/gm-search.sh --rag-only "quest mission objective plot" 5
 ```
 
 Display a preview:
@@ -205,7 +205,7 @@ As each agent completes, update the display:
 **CRITICAL**: After ALL agents report completion, validate their output before proceeding.
 
 ```bash
-bash tools/dm-extract.sh validate "<campaign-name>"
+bash tools/gm-extract.sh validate "<campaign-name>"
 ```
 
 This checks that all 4 extraction files exist and contain valid JSON.
@@ -247,62 +247,62 @@ After all agents complete:
 # output (e.g. {"npcs": {...}}, and items.json carries document/metadata keys);
 # a plain `cp` would leave those wrappers in place and the runtime would read one
 # giant entity named "npcs". `normalize` unwraps them. NEVER `cp` these files.
-bash tools/dm-extract.sh normalize "<campaign-name>"
+bash tools/gm-extract.sh normalize "<campaign-name>"
 
 # Cap each type to the top-30 most important entities (mention-frequency +
 # plot-reference/party boost). We do NOT need every walk-on NPC or one-off
 # platform — just the playable core. Runs before enhancement so dropped
 # entities aren't enhanced. Reports dropped counts to the user.
-bash tools/dm-extract.sh cap "<campaign-name>" 30
+bash tools/gm-extract.sh cap "<campaign-name>" 30
 
 # Item correctness: clear lore-only `cursed` flags (keep only mechanical penalties),
 # reclassify overloaded `wondrous` into key/portal/lootbox/coupon, null non-price values.
-bash tools/dm-extract.sh fix-items "<campaign-name>"
+bash tools/gm-extract.sh fix-items "<campaign-name>"
 
 # Normalize connection targets: canonicalize drifted `connections.to` to real keys
 # and move routing rule-phrases ("Any line", "Transfer stations ending in 1") into
 # notes so reconcile doesn't drop them. Runs BEFORE reconcile.
-bash tools/dm-extract.sh normalize-connections "<campaign-name>"
+bash tools/gm-extract.sh normalize-connections "<campaign-name>"
 
 # Reconcile missing locations: stub (with a source passage + bidirectional hub
 # link) or drop every location reference that doesn't resolve to a node. Runs
 # BEFORE the integrity gate so location refs resolve.
-bash tools/dm-extract.sh reconcile "<campaign-name>"
+bash tools/gm-extract.sh reconcile "<campaign-name>"
 
 # Stub missing NPC refs: the hard cap can drop NPCs that plots still reference;
 # create a minimal stub for each so plot.npcs resolves, and normalize plot types.
 # Runs BEFORE the integrity gate.
-bash tools/dm-extract.sh stub-npcs "<campaign-name>"
+bash tools/gm-extract.sh stub-npcs "<campaign-name>"
 
 # Stat combat NPCs: assign a coarse difficulty-proxy (hp + cr/difficulty) so every
 # combatant is runnable out of the box, and flag non-combatants statless. Exact stat
 # blocks still come from the monster-manual agent at encounter time.
-bash tools/dm-extract.sh stat-npcs "<campaign-name>"
+bash tools/gm-extract.sh stat-npcs "<campaign-name>"
 
 # Integrity gate: canonicalize every cross-reference (plot.npcs, plot.locations,
 # npc.location_tags, location.connections) to a real entity key via the alias
 # resolver, recording variants as `aliases`. Strict by default — FAILS the import
 # on any unresolved reference (after reconcile has stubbed/rewritten locations).
-bash tools/dm-extract.sh integrity "<campaign-name>"
+bash tools/gm-extract.sh integrity "<campaign-name>"
 
 # Plot spine: order the MAIN plots into the book's arc (sequence + depends_on) and
 # record a through-line on the overview, so STORY THREADS read as a narrative arc,
 # not a flat bag of hooks.
-bash tools/dm-extract.sh spine "<campaign-name>"
+bash tools/gm-extract.sh spine "<campaign-name>"
 
 # Seed threat clocks: detect the book's headline time pressure (e.g. a "collapse
 # in N days" countdown) in the plots and create real threat_clocks entries with a
 # full-clock consequence + linked plot, so the arc has live pressure (not just prose).
-bash tools/dm-extract.sh seed-clocks "<campaign-name>"
+bash tools/gm-extract.sh seed-clocks "<campaign-name>"
 
 # Seed the opening beat: set the starting player_position to the arc's opening
 # location, mark the first spine plot active with an opening beat, and write a
-# session-log "Previously On / Where We Paused" hook — so the first /dm session
+# session-log "Previously On / Where We Paused" hook — so the first /gm session
 # opens on the book's actual opening, not a blank void. (Run after spine.)
-bash tools/dm-extract.sh seed-opening "<campaign-name>"
+bash tools/gm-extract.sh seed-opening "<campaign-name>"
 
 # Archive the extracted/ folder (temporary working directory)
-bash tools/dm-extract.sh archive "<campaign-name>"
+bash tools/gm-extract.sh archive "<campaign-name>"
 ```
 
 **Note**: The `extracted/` folder is a temporary working directory. `normalize`
@@ -360,7 +360,7 @@ The World Kit (ruleset.json) is a thin router. The book's signature SYSTEMS live
 `campaign-overview.json`'s `campaign_rules` block — `WorldKit.campaign_rules()` reads
 them into scene context. A fresh import leaves the overview as the default scaffold
 (genre "Fantasy", date "Year 1", no campaign_rules), so without this step the book's
-flavor is captured nowhere the DM tooling reads.
+flavor is captured nowhere the GM tooling reads.
 
 Author real overview content from the source and write a `campaign_rules` block
 describing the book's signature systems, then resolve any dangling `rules_doc`:
@@ -368,7 +368,7 @@ describing the book's signature systems, then resolve any dangling `rules_doc`:
 ```bash
 uv run python lib/overview_seed.py "$CAMPAIGN_DIR" \
   --fields-json '{"campaign_name":"<World/Book Name>","genre":"<e.g. LitRPG / Comedy-Horror>","tone":{"horror":30,"comedy":35,"drama":35}}' \
-  --rules-json '{"<system_key>":"<one-line rule the DM enforces>", "...":"..."}' \
+  --rules-json '{"<system_key>":"<one-line rule the GM enforces>", "...":"..."}' \
   --fix-rules-doc
 ```
 
@@ -376,17 +376,17 @@ For a DCC import, `campaign_rules` should cover: viewer-based progression, loot 
 saferooms/shops, the moving Iron Tangle trains, prime-station stairwells, and the
 collapse clock. `--fix-rules-doc` nulls a `rules.md` pointer with no file on disk.
 
-Then author substantive DM-facing rules prose grounded in the source and point the
+Then author substantive GM-facing rules prose grounded in the source and point the
 kit at it (this is the per-book rules meat the thin ruleset.json routes to):
 
 ```bash
-# Write $CAMPAIGN_DIR/rules.md — DM-facing guidance for the book's signature systems
+# Write $CAMPAIGN_DIR/rules.md — GM-facing guidance for the book's signature systems
 # (progression, loot, saferooms, world mechanics, the headline clock, tone). Then:
 uv run python -c "import sys;sys.path.insert(0,'lib');from overview_seed import set_rules_doc;print(set_rules_doc('$CAMPAIGN_DIR','rules.md'))"
 ```
 `WorldKit.rules_doc_path()` loads it on demand. Write real guidance, not raw passages.
 
-Verify: `bash tools/dm-campaign.sh switch "<campaign-name>"` then
+Verify: `bash tools/gm-campaign.sh switch "<campaign-name>"` then
 `uv run python -c "import sys;sys.path.insert(0,'lib');from world_kit import WorldKit;print(list(WorldKit().campaign_rules().keys()))"`
 — the campaign_rules keys must be non-empty.
 
@@ -395,13 +395,13 @@ Verify: `bash tools/dm-campaign.sh switch "<campaign-name>"` then
 ## Step 7: Switch to Campaign and Show Summary
 
 ```bash
-bash tools/dm-campaign.sh switch "<campaign-name>"
+bash tools/gm-campaign.sh switch "<campaign-name>"
 ```
 
 Count and display what was extracted:
 
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "import json; d=json.load(open('$CAMPAIGN_DIR/npcs.json')); print(f'NPCs: {len(d)}')"
 uv run python -c "import json; d=json.load(open('$CAMPAIGN_DIR/locations.json')); print(f'Locations: {len(d)}')"
 uv run python -c "import json; d=json.load(open('$CAMPAIGN_DIR/items.json')); print(f'Items: {len(d)}')"
@@ -450,7 +450,7 @@ This ensures rich, authentic gameplay context.
 
 Run the batch enhancement:
 ```bash
-bash tools/dm-enhance.sh batch
+bash tools/gm-enhance.sh batch
 ```
 
 This will:
@@ -472,7 +472,7 @@ feel true to the book.
 **Why this matters:**
 - Without enhancement, entities are just names and brief descriptions
 - With enhancement, each entity has 3-5 source passages attached
-- During gameplay, the DM can draw on this context for authentic narration
+- During gameplay, the GM can draw on this context for authentic narration
 
 ---
 
@@ -534,13 +534,13 @@ The agents automatically detect and adapt to your content:
 
 **Agents fail**: Check that chunk files exist in `chunks/` directory.
 
-**Missing content**: Run individual agents again with more specific prompts, or use `bash tools/dm-search.sh --rag-only "search terms"` to search directly.
+**Missing content**: Run individual agents again with more specific prompts, or use `bash tools/gm-search.sh --rag-only "search terms"` to search directly.
 
 **Want to enhance extracted entities**: Use `/enhance` to add more detail from source material via RAG.
 
 ---
 
-## Done → Play with /dm
+## Done → Play with /gm
 
 Once the campaign is imported, hand the player off to the single front door:
 
@@ -549,9 +549,9 @@ Once the campaign is imported, hand the player off to the single front door:
   ✅ "[Campaign Name]" IS READY TO PLAY
 ================================================================
 
-  Run /dm to step into the world.
+  Run /gm to step into the world.
 ================================================================
 ```
 
-`/dm` is the canonical entry for every session — do not present a separate
-"continue or new" menu here; `/dm` STEP 0 already handles it.
+`/gm` is the canonical entry for every session — do not present a separate
+"continue or new" menu here; `/gm` STEP 0 already handles it.

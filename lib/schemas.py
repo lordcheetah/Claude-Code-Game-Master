@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JSON schemas and validation for DM world state files.
+JSON schemas and validation for GM world state files.
 Provides schema definitions and validation functions for all entity types.
 """
 

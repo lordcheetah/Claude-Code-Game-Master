@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JSON operations module for DM tools
+JSON operations module for GM tools
 Provides safe JSON read/write/update operations with proper error handling
 """
 

@@ -4,7 +4,7 @@
 After cap/integrity/spine, this sets the campaign's starting player_position to the
 arc's opening location, marks the first spine plot active with an opening beat, and
 writes a session-log "Previously On / Where We Paused" block (the channel
-get_full_context reads) so the first /dm session opens on the book's actual opening.
+get_full_context reads) so the first /gm session opens on the book's actual opening.
 """
 
 import json

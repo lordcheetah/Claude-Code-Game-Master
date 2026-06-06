@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Entity Enhancer Module for DM Tools
+Entity Enhancer Module for GM Tools
 
 Provides RAG-based enhancement for campaign entities (NPCs, locations, items, plots).
 Queries the campaign's vector store for passages mentioning an entity and returns
@@ -199,7 +199,7 @@ class EntityEnhancer:
         """
         Direct RAG search without entity filtering.
 
-        Returns raw passages for the DM to evaluate relevance.
+        Returns raw passages for the GM to evaluate relevance.
         No name matching, no strict filtering - just semantic search.
 
         Args:
@@ -254,7 +254,7 @@ class EntityEnhancer:
         Query the vector store for passages related to an entity.
 
         Uses entity-type-specific query templates for better results.
-        Returns ALL semantically relevant passages - DM judges relevance.
+        Returns ALL semantically relevant passages - GM judges relevance.
 
         Args:
             name: Entity name to search for
@@ -300,7 +300,7 @@ class EntityEnhancer:
                     continue
 
                 # Skip only very low-relevance results (distance > 1.5)
-                # Let DM judge everything else
+                # Let GM judge everything else
                 if distance > 1.5:
                     continue
 
@@ -318,7 +318,7 @@ class EntityEnhancer:
         # Sort by relevance (lower distance = more relevant)
         passages.sort(key=lambda x: x['distance'])
 
-        return passages[:20]  # Return more results, let DM filter
+        return passages[:20]  # Return more results, let GM filter
 
     def _clean_passage(self, text: str, max_length: int = 600) -> str:
         """Remove noise and cap length of passages."""
@@ -517,9 +517,9 @@ class EntityEnhancer:
 
     def get_scene_context(self, location_name: str) -> Optional[Dict[str, Any]]:
         """
-        Get scene context for DM use. Returns None if no RAG available.
+        Get scene context for GM use. Returns None if no RAG available.
 
-        This method provides internal context for the DM to craft scenes,
+        This method provides internal context for the GM to craft scenes,
         without exposing raw passages to the player. It also auto-enhances
         locations on first visit.
 
@@ -560,7 +560,7 @@ class EntityEnhancer:
             return {
                 "source": "stored",
                 "location": location_key,
-                "context": location_data["context"][:5],  # Top 5 for DM reference
+                "context": location_data["context"][:5],  # Top 5 for GM reference
             }
 
         # Query RAG
@@ -787,8 +787,8 @@ def main():
     dungeon_parser = subparsers.add_parser('dungeon-check', help='Check dungeon room structure')
     dungeon_parser.add_argument('name', help='Dungeon name to check')
 
-    # Scene context command (DM-internal, minimal output)
-    scene_parser = subparsers.add_parser('scene', help='Get scene context for DM use (minimal output)')
+    # Scene context command (GM-internal, minimal output)
+    scene_parser = subparsers.add_parser('scene', help='Get scene context for GM use (minimal output)')
     scene_parser.add_argument('name', help='Location name or description')
 
     # Batch enhance command
@@ -932,21 +932,21 @@ def main():
         print(json.dumps(info, indent=2))
 
     elif args.action == 'scene':
-        # DM-internal scene context (minimal output)
+        # GM-internal scene context (minimal output)
         result = enhancer.get_scene_context(args.name)
 
         if result is None:
             # Silent - no RAG available for this campaign
             pass
         elif result["source"] == "stored":
-            print(f"[DM Context: {result['location']}]")
+            print(f"[GM Context: {result['location']}]")
             for ctx in result["context"]:
                 # Show first 100 chars of each context passage
                 print(f"  • {ctx[:100]}...")
         else:
             # From RAG query
             loc_name = result.get("location", args.name)
-            print(f"[DM Context: {loc_name} (from source)]")
+            print(f"[GM Context: {loc_name} (from source)]")
             for p in result["passages"][:3]:
                 print(f"  • {p['text'][:100]}...")
 

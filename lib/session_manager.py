@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Session management module for DM tools
+Session management module for GM tools
 Handles session lifecycle, party movement, and JSON-based saves
 """
 
@@ -382,7 +382,7 @@ class SessionManager(EntityManager):
             lines.append("--- STORY THREADS ---")
             lines.extend(threads)
 
-        # --- Key Facts (established plot facts the DM must keep continuity on) ---
+        # --- Key Facts (established plot facts the GM must keep continuity on) ---
         key_facts = self._key_facts(per_category=None if full else 4)
         if key_facts:
             lines.append("")
@@ -533,7 +533,7 @@ class SessionManager(EntityManager):
             lines.append("(none)")
 
         # --- Your World's Rules (bespoke per-campaign systems; NEVER truncated) ---
-        # These rules ARE the magic that makes each book feel distinct. The DM is
+        # These rules ARE the magic that makes each book feel distinct. The GM is
         # told to follow them exactly, so it must see them in full. Nested systems
         # (loot boxes, audience reactions, interviews) are pretty-printed whole.
         rules = campaign.get('campaign_rules', {})

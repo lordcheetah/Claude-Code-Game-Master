@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Centralized logging configuration for DM modules.
+Centralized logging configuration for GM modules.
 Provides consistent logging across all Python modules.
 """
 
@@ -11,7 +11,7 @@ from typing import Optional
 
 
 def setup_logging(level: Optional[int] = None, name: str = 'dm') -> logging.Logger:
-    """Configure logging for DM modules.
+    """Configure logging for GM modules.
 
     Args:
         level: Logging level. Defaults to INFO, or reads from DM_LOG_LEVEL env var.

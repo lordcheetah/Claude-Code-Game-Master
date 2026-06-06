@@ -8,7 +8,7 @@ $ARGUMENTS - Entity name OR search keywords (e.g., "Grimjaw", "second floor mons
 
 ## Philosophy
 
-**DM judges relevance, not the code.** The RAG system returns semantically similar passages without strict filtering. You (the DM) decide what's useful. This prevents filtering out valuable content due to naming mismatches (e.g., "Floor 2" vs "second floor").
+**GM judges relevance, not the code.** The RAG system returns semantically similar passages without strict filtering. You (the GM) decide what's useful. This prevents filtering out valuable content due to naming mismatches (e.g., "Floor 2" vs "second floor").
 
 ## Workflow
 
@@ -17,7 +17,7 @@ $ARGUMENTS - Entity name OR search keywords (e.g., "Grimjaw", "second floor mons
 First, find what kind of entity we're enhancing:
 
 ```bash
-bash tools/dm-enhance.sh find "$ARGUMENTS"
+bash tools/gm-enhance.sh find "$ARGUMENTS"
 ```
 
 This returns one of:
@@ -36,7 +36,7 @@ If no entity found, use **Option A: Exploratory Search** instead.
 Use when searching for general information:
 
 ```bash
-bash tools/dm-enhance.sh search "$ARGUMENTS" -n 15
+bash tools/gm-enhance.sh search "$ARGUMENTS" -n 15
 ```
 
 Examples:
@@ -58,12 +58,12 @@ When entity type is `npc`:
 #### Step 1: Query Source Passages
 
 ```bash
-bash tools/dm-enhance.sh query "$ARGUMENTS" --type npc
+bash tools/gm-enhance.sh query "$ARGUMENTS" --type npc
 ```
 
 #### Step 2: Propose Enhancements
 
-Present to the DM:
+Present to the GM:
 
 ```
 **NPC Found:** [Name]
@@ -85,7 +85,7 @@ Based on [X] passages, I can add:
 #### Step 3: Apply If Approved
 
 ```bash
-bash tools/dm-enhance.sh apply "$ARGUMENTS" --context "passage 1" --context "passage 2"
+bash tools/gm-enhance.sh apply "$ARGUMENTS" --context "passage 1" --context "passage 2"
 ```
 
 For description updates:
@@ -102,7 +102,7 @@ When entity type is `dungeon`:
 #### Step 1: Check Existing Structure
 
 ```bash
-bash tools/dm-enhance.sh dungeon-check "$ARGUMENTS"
+bash tools/gm-enhance.sh dungeon-check "$ARGUMENTS"
 ```
 
 This returns:
@@ -113,7 +113,7 @@ This returns:
 #### Step 2: Query Source Passages
 
 ```bash
-bash tools/dm-enhance.sh query "$ARGUMENTS" --type dungeon -n 15
+bash tools/gm-enhance.sh query "$ARGUMENTS" --type dungeon -n 15
 ```
 
 #### Step 3: Present Options
@@ -209,7 +209,7 @@ When user chooses [G]enerate:
 
 1. Check if room structure exists:
    ```bash
-   bash tools/dm-enhance.sh dungeon-check "[Dungeon Name]"
+   bash tools/gm-enhance.sh dungeon-check "[Dungeon Name]"
    ```
 
 2. If `has_structure: false`:
@@ -240,6 +240,6 @@ This ensures dungeons have proper room structures before exploration begins.
 - Uses additive merging - existing context is preserved
 - Context passages capped at 20 per entity
 - Works for NPCs, locations, items, plots, dungeons
-- **No strict name filtering** - DM judges all passage relevance
+- **No strict name filtering** - GM judges all passage relevance
 - **RAG Priority**: Use source material for accuracy over improvisation
 - **Dungeon auto-generation**: When player enters a dungeon without rooms, generate structure proactively

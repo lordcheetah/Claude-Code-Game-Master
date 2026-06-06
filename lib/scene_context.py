@@ -2,8 +2,8 @@
 """
 Unified scene-context entry point.
 
-Collapses the confusing three-way choice (dm-search vs dm-enhance query vs
-dm-enhance scene) into ONE call that returns structured context for the current
+Collapses the confusing three-way choice (gm-search vs gm-enhance query vs
+gm-enhance scene) into ONE call that returns structured context for the current
 scene and any named entities: world-state facts (always) plus grounded source
 passages from RAG (when a vector store exists). RAG is optional and degrades
 gracefully — no vectors / no RAG deps simply means an empty `passages` list.
@@ -72,7 +72,7 @@ def main():
     json_mode = "--json" in sys.argv
     argv = [a for a in sys.argv[1:] if a != "--json"]
 
-    parser = argparse.ArgumentParser(description="Unified scene context for the DM")
+    parser = argparse.ArgumentParser(description="Unified scene context for the GM")
     parser.add_argument("location", nargs="?", help="Location (defaults to current)")
     parser.add_argument("--entity", action="append", default=[], help="Named entity to include (repeatable)")
     args = parser.parse_args(argv)

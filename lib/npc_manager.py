@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NPC management module for DM tools
+NPC management module for GM tools
 Handles NPC creation, updates, and tagging operations
 """
 
@@ -361,7 +361,7 @@ class NPCManager(EntityManager):
             return None, None
 
         if not npcs[name].get('is_party_member'):
-            print(f"[ERROR] {name} is not a party member. Use 'dm-npc.sh promote \"{name}\"' first.")
+            print(f"[ERROR] {name} is not a party member. Use 'gm-npc.sh promote \"{name}\"' first.")
             return None, None
 
         return npcs, name
@@ -652,7 +652,7 @@ class NPCManager(EntityManager):
         """
         party = self.get_party_members()
         if not party:
-            return "No party members. Use 'dm-npc.sh promote \"Name\"' to add NPCs to the party."
+            return "No party members. Use 'gm-npc.sh promote \"Name\"' to add NPCs to the party."
 
         lines = ["=== PARTY MEMBERS ===", ""]
         for name, data in party.items():

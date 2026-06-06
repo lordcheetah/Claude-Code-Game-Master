@@ -3,7 +3,7 @@
 
 Import copies/creates ruleset.json but leaves campaign-overview as the default
 scaffold (genre "Fantasy", no campaign_rules), so the book's signature systems live
-nowhere the DM tooling reads (WorldKit.campaign_rules() reads overview.campaign_rules).
+nowhere the GM tooling reads (WorldKit.campaign_rules() reads overview.campaign_rules).
 A sibling-kit copy can also leave ruleset.rules_doc pointing at a file that doesn't
 exist. These helpers seed real overview content and null a dangling pointer.
 """

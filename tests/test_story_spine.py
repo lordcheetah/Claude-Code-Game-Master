@@ -1,7 +1,7 @@
 """Tests for story-spine-context.
 
 Pre-fix, get_full_context never read plots.json, facts.json, or session-log.md —
-the DM started each session knowing party HP but not the plot or last cliffhanger.
+the GM started each session knowing party HP but not the plot or last cliffhanger.
 These assert the spine is now assembled. Each substring comes from a file the old
 code never opened, so they fail against the pre-fix implementation.
 """

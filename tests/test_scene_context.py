@@ -1,6 +1,6 @@
 """Tests for scene-context-consolidation.
 
-One unified entry replaces the dm-search / dm-enhance-query / dm-enhance-scene
+One unified entry replaces the gm-search / gm-enhance-query / gm-enhance-scene
 trio. World-state context is always returned; RAG passages are optional and must
 degrade gracefully when a campaign has no vector store (the test fixture omits the
 12M vectors/ dir on purpose). Live grounded-passage behavior is smoke-verified in

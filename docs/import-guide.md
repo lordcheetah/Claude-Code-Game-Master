@@ -25,7 +25,7 @@ For more control or troubleshooting, run each step individually:
 ### Step 1: Vectorize the Document
 
 ```bash
-bash tools/dm-extract.sh prepare "path/to/book.pdf" "campaign-name"
+bash tools/gm-extract.sh prepare "path/to/book.pdf" "campaign-name"
 ```
 
 This will:
@@ -48,13 +48,13 @@ The `/import` command automatically launches 4 parallel extraction agents:
 
 Each agent uses semantic search to find relevant content:
 ```bash
-bash tools/dm-search.sh "character names dialogue" --rag-only -n 50
+bash tools/gm-search.sh "character names dialogue" --rag-only -n 50
 ```
 
 ### Step 3: Merge Results
 
 ```bash
-bash tools/dm-extract.sh merge "campaign-name"
+bash tools/gm-extract.sh merge "campaign-name"
 ```
 
 Combines all agent outputs into unified JSON files and deduplicates entities.
@@ -62,7 +62,7 @@ Combines all agent outputs into unified JSON files and deduplicates entities.
 ### Step 4: Review Extraction
 
 ```bash
-bash tools/dm-extract.sh review "campaign-name"
+bash tools/gm-extract.sh review "campaign-name"
 ```
 
 Shows counts and samples from each entity type. Review before saving.
@@ -70,7 +70,7 @@ Shows counts and samples from each entity type. Review before saving.
 ### Step 5: Save to World State
 
 ```bash
-bash tools/dm-extract.sh save rename "campaign-name"
+bash tools/gm-extract.sh save rename "campaign-name"
 ```
 
 Moves extracted data to final world state files. Strategies:
@@ -81,7 +81,7 @@ Moves extracted data to final world state files. Strategies:
 ### Step 6: Archive Extraction Files (Optional)
 
 ```bash
-bash tools/dm-extract.sh archive "campaign-name"
+bash tools/gm-extract.sh archive "campaign-name"
 ```
 
 Archives the `extracted/` folder after successful merge to keep campaign folder clean.
@@ -94,13 +94,13 @@ After importing, you can query the vectorized source material directly:
 
 ```bash
 # Search both world state AND source material (default)
-bash tools/dm-search.sh "dragon"
+bash tools/gm-search.sh "dragon"
 
 # Search source material only
-bash tools/dm-search.sh "dragon" --rag-only -n 20
+bash tools/gm-search.sh "dragon" --rag-only -n 20
 
 # Search world state only
-bash tools/dm-search.sh "dragon" --world-only
+bash tools/gm-search.sh "dragon" --world-only
 ```
 
 ---
@@ -125,8 +125,8 @@ Use **ALL returned passages** - even loosely related passages help maintain auth
 | Vector Store | `lib/rag/vector_store.py` | ChromaDB interface |
 | Embedder | `lib/rag/embedder.py` | sentence-transformers |
 | Agent Extractor | `lib/agent_extractor.py` | Orchestrates workflow |
-| Search CLI | `tools/dm-search.sh` | Unified search |
-| Extract CLI | `tools/dm-extract.sh` | prepare/merge/save |
+| Search CLI | `tools/gm-search.sh` | Unified search |
+| Extract CLI | `tools/gm-extract.sh` | prepare/merge/save |
 | Extractor Agents | `.claude/agents/extractor-*.md` | 4 specialized agents |
 | Import Skill | `.claude/commands/import.md` | Import workflow |
 
@@ -135,8 +135,8 @@ Use **ALL returned passages** - even loosely related passages help maintain auth
 ## Troubleshooting
 
 ### No results from queries?
-- Check vectors exist: `bash tools/dm-search.sh "test" --rag-only`
-- Re-run prepare step if needed: `bash tools/dm-extract.sh prepare "file" "name"`
+- Check vectors exist: `bash tools/gm-search.sh "test" --rag-only`
+- Re-run prepare step if needed: `bash tools/gm-extract.sh prepare "file" "name"`
 
 ### Missing entities?
 - Try different search terms
@@ -148,7 +148,7 @@ Use **ALL returned passages** - even loosely related passages help maintain auth
 - Manual cleanup in JSON files if needed
 
 ### Extraction agents failing?
-- Check `bash tools/dm-extract.sh validate "campaign-name"`
+- Check `bash tools/gm-extract.sh validate "campaign-name"`
 - Re-run failed agent types individually
 
 ---

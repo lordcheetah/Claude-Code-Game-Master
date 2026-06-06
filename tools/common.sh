@@ -1,5 +1,5 @@
 #!/bin/bash
-# common.sh - Common utilities and environment setup for all DM tools
+# common.sh - Common utilities and environment setup for all GM tools
 # This file should be sourced by all other scripts: source "$(dirname "$0")/common.sh"
 
 # Detect Python executable - prefer uv, fallback to python3/python

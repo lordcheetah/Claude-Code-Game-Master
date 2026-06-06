@@ -97,9 +97,9 @@ instructions: |
 
   Use the RAG query tool to find relevant chunks:
   ```bash
-  bash tools/dm-search.sh --rag-only "characters names people dialogue" 50
-  bash tools/dm-search.sh --rag-only "NPC description personality" 30
-  bash tools/dm-search.sh --rag-only "[specific character name]" 20
+  bash tools/gm-search.sh --rag-only "characters names people dialogue" 50
+  bash tools/gm-search.sh --rag-only "NPC description personality" 30
+  bash tools/gm-search.sh --rag-only "[specific character name]" 20
   ```
 
   Run multiple queries with different terms to ensure coverage:

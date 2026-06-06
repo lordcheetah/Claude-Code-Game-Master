@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Note/fact management module for DM tools."""
+"""Note/fact management module for GM tools."""
 
 import json
 import sys

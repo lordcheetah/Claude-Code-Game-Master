@@ -1,4 +1,4 @@
-# /help - DM Command Reference
+# /help - GM Command Reference
 
 Display all available commands and tools.
 
@@ -8,15 +8,15 @@ Display all available commands and tools.
 
 ```
 ================================================================
-  DM ASSISTANT - Command Reference
+  GM ASSISTANT - Command Reference
 ================================================================
 
   CORE GAMEPLAY
   --------------------------------------------------------
-  /dm              Play the game (handles everything)
-  /dm save         Save current session state
-  /dm character    Show character sheet & inventory
-  /dm overview     View campaign state summary
+  /gm              Play the game (handles everything)
+  /gm save         Save current session state
+  /gm character    Show character sheet & inventory
+  /gm overview     View campaign state summary
 
   CAMPAIGN SETUP
   --------------------------------------------------------
@@ -34,25 +34,25 @@ Display all available commands and tools.
 
 ================================================================
 
-  CLI TOOLS (bash tools/dm-*.sh)
+  CLI TOOLS (bash tools/gm-*.sh)
   --------------------------------------------------------
-  dm-session.sh     Session management, save/restore
-  dm-player.sh      Player character stats
-  dm-npc.sh         Create and update NPCs
-  dm-location.sh    Add and connect locations
-  dm-consequence.sh Track future events
-  dm-search.sh      Search world state
-  dm-note.sh        Record world facts
-  dm-enhance.sh     Enrich entities with RAG
-  dm-overview.sh    Quick world summary
-  dm-campaign.sh    Switch between campaigns
+  gm-session.sh     Session management, save/restore
+  gm-player.sh      Player character stats
+  gm-npc.sh         Create and update NPCs
+  gm-location.sh    Add and connect locations
+  gm-consequence.sh Track future events
+  gm-search.sh      Search world state
+  gm-note.sh        Record world facts
+  gm-enhance.sh     Enrich entities with RAG
+  gm-overview.sh    Quick world summary
+  gm-campaign.sh    Switch between campaigns
 
 ================================================================
 
   QUICK START
   --------------------------------------------------------
   New campaign:     /new-game
-  Continue playing: /dm
+  Continue playing: /gm
   Import module:    /import
 
 ================================================================

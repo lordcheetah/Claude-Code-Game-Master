@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Color utilities for DM display output.
+Color utilities for GM display output.
 Strategic ANSI colors for dice, damage, and key moments.
 
 Import-only helper module:

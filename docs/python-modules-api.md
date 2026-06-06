@@ -1,6 +1,6 @@
 # Python Modules API Reference
 
-This document provides comprehensive API documentation for the Python modules in `/lib/` that implement the Hybrid Evolution Architecture for the DM system.
+This document provides comprehensive API documentation for the Python modules in `/lib/` that implement the Hybrid Evolution Architecture for the GM system.
 
 ## Table of Contents
 - [json_ops.py](#json_opspy) - JSON file operations with atomic writes
@@ -400,7 +400,7 @@ Here's how these modules work together in the hybrid architecture:
 
 ```bash
 #!/bin/bash
-# dm-npc-refactored.sh - Bash script using Python modules
+# gm-npc-refactored.sh - Bash script using Python modules
 
 # Create NPC using Python module
 uv run python lib/npc_manager.py create "$NPC_NAME" "$DESCRIPTION" "$ATTITUDE"
@@ -434,7 +434,7 @@ All modules follow consistent error handling patterns:
 
 The hybrid architecture provides:
 
-- **65% code reduction** in bash scripts (proven with dm-npc-refactored.sh)
+- **65% code reduction** in bash scripts (proven with gm-npc-refactored.sh)
 - **Atomic file operations** prevent corruption during concurrent access
 - **Centralized validation** ensures consistency across all tools
 - **Reusable components** reduce duplication and maintenance burden

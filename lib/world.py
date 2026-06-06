@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-World context for DM operations.
+World context for GM operations.
 Central entry point for all world state operations.
 """
 

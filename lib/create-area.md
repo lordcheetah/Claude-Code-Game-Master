@@ -48,12 +48,12 @@ Before launching world-builder agents, gather context:
 
 ```bash
 # 1. Search for relevant world facts
-bash tools/dm-search.sh "[area type]"
-bash tools/dm-search.sh "[nearby location]"
-bash tools/dm-search.sh "[relevant faction/theme]"
+bash tools/gm-search.sh "[area type]"
+bash tools/gm-search.sh "[nearby location]"
+bash tools/gm-search.sh "[relevant faction/theme]"
 
 # 2. Check active consequences that might affect the area
-bash tools/dm-consequence.sh check
+bash tools/gm-consequence.sh check
 
 # 3. Note any world constraints (from facts.json):
 # - Resource shortages (materials, food, magic)

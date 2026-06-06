@@ -13,7 +13,7 @@ Complete technical breakdown of the document import and extraction workflow.
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Step 1: PREPARE                                   │
-│                  dm-extract.sh prepare                               │
+│                  gm-extract.sh prepare                               │
 │                         │                                            │
 │                         ▼                                            │
 │  ┌─────────────────────────────────────────────────────────────┐   │
@@ -65,7 +65,7 @@ Complete technical breakdown of the document import and extraction workflow.
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Step 3: MERGE                                     │
-│                  dm-extract.sh merge                                 │
+│                  gm-extract.sh merge                                 │
 │                         │                                            │
 │                         ▼                                            │
 │  ┌─────────────────────────────────────────────────────────────┐   │
@@ -80,7 +80,7 @@ Complete technical breakdown of the document import and extraction workflow.
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Step 4: REVIEW                                    │
-│                  dm-extract.sh review                                │
+│                  gm-extract.sh review                                │
 │                         │                                            │
 │                         ▼                                            │
 │  ┌─────────────────────────────────────────────────────────────┐   │
@@ -93,7 +93,7 @@ Complete technical breakdown of the document import and extraction workflow.
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Step 5: SAVE (Optional)                           │
-│                  dm-extract.sh save                                  │
+│                  gm-extract.sh save                                  │
 │                         │                                            │
 │                         ▼                                            │
 │  ┌─────────────────────────────────────────────────────────────┐   │

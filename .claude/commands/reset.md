@@ -33,7 +33,7 @@ What would you like?
 
 ### If ARCHIVE:
 ```bash
-bash tools/dm-reset.sh archive
+bash tools/gm-reset.sh archive
 ```
 
 This will:
@@ -44,7 +44,7 @@ This will:
 
 ### If HARD RESET:
 ```bash
-bash tools/dm-reset.sh hard
+bash tools/gm-reset.sh hard
 ```
 
 This will:
@@ -67,7 +67,7 @@ After successful reset, display:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   World Reset Complete
 
-  Ready for /new-game or /dm
+  Ready for /new-game or /gm
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

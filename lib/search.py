@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Search functionality for the DM's world state
+Search functionality for the GM's world state
 Provides Python API for searching facts, NPCs, locations, and consequences
 """
 

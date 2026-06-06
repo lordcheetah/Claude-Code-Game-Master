@@ -1,0 +1,21 @@
+#!/bin/bash
+# gm-time.sh - Update campaign time (wrapper for time_manager.py)
+
+source "$(dirname "$0")/common.sh"
+
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Usage: gm-time.sh <time_of_day> <date>"
+    echo "Example: gm-time.sh \"Dawn\" \"16th day of Harvestmoon, Year 1247\""
+    exit 1
+fi
+
+require_active_campaign
+
+$PYTHON_CMD -m lib.time_manager update "$1" "$2"
+RESULT=$?
+if [ $RESULT -ne 0 ]; then exit $RESULT; fi
+
+# Reactivity: time passing can fire on_time consequences (e.g. nightfall, deadlines).
+echo ""
+bash "$(dirname "$0")/gm-consequence.sh" tick
+exit 0

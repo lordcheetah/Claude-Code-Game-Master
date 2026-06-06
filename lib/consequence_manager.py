@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Consequence management module for DM tools
+Consequence management module for GM tools
 Handles tracking future events and consequences
 """
 
@@ -87,7 +87,7 @@ class ConsequenceManager(EntityManager):
         world_state keys (all optional): location (str), present_npcs (list[str]),
         time (str), events (list[str]), date (str).
 
-        Firing does NOT remove a consequence — the DM vetoes for timing or resolves
+        Firing does NOT remove a consequence — the GM vetoes for timing or resolves
         it explicitly; the tick layer dedups so it does not re-fire every beat.
         """
         data = self.json_ops.load_json(self.consequences_file)
@@ -176,7 +176,7 @@ class ConsequenceManager(EntityManager):
 
         Same scene (location|time|date) won't re-fire the same consequence; a
         changed scene re-arms it. Expired consequences are archived. Returns the
-        newly-fired consequences (with match_reason). The DM may still veto a
+        newly-fired consequences (with match_reason). The GM may still veto a
         fired consequence narratively — it stays active either way.
         """
         data = self.json_ops.load_json(self.consequences_file)

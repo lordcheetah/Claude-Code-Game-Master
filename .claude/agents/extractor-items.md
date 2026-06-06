@@ -103,9 +103,9 @@ instructions: |
 
   Use the RAG query tool to find relevant chunks:
   ```bash
-  bash tools/dm-search.sh --rag-only "items equipment weapons armor treasure" 50
-  bash tools/dm-search.sh --rag-only "magic item legendary rare spell scroll" 30
-  bash tools/dm-search.sh --rag-only "loot reward gold inventory" 30
+  bash tools/gm-search.sh --rag-only "items equipment weapons armor treasure" 50
+  bash tools/gm-search.sh --rag-only "magic item legendary rare spell scroll" 30
+  bash tools/gm-search.sh --rag-only "loot reward gold inventory" 30
   ```
 
   Run multiple queries with different terms to ensure coverage:

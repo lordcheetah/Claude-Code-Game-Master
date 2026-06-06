@@ -8,8 +8,8 @@ This command validates your generated world for completeness and consistency. Ru
 
 ### Step 0: Get Active Campaign Path
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
-echo "Checking campaign: $(bash tools/dm-campaign.sh active)"
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
+echo "Checking campaign: $(bash tools/gm-campaign.sh active)"
 echo "Path: $CAMPAIGN_DIR"
 ```
 
@@ -21,7 +21,7 @@ uv run python lib/schemas.py
 
 ### Step 2: Check Session Log
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 if [ -f "$CAMPAIGN_DIR/session-log.md" ]; then
     lines=$(wc -l < "$CAMPAIGN_DIR/session-log.md")
     if [ $lines -gt 3 ]; then
@@ -43,7 +43,7 @@ Covered by the schema validator above. Only add custom checks here if needed.
 
 ### Step 2: Location Analysis
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
@@ -70,7 +70,7 @@ for name, data in locations.items():
 
 ### Step 3: NPC Analysis
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
@@ -104,7 +104,7 @@ for name, data in npcs.items():
 
 ### Step 4: Plot Structure Check
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
@@ -133,7 +133,7 @@ if other_categories:
 
 ### Step 5: Consequences Timeline
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
@@ -164,7 +164,7 @@ if active:
 
 ### Step 1: Location Connectivity
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
@@ -198,7 +198,7 @@ else:
 
 ### Step 2: NPC Location Verification
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 uv run python -c "
 import json
 import sys
@@ -239,12 +239,12 @@ else:
 
 ### Generate Summary Report
 ```bash
-CAMPAIGN_DIR=$(bash tools/dm-campaign.sh path)
+CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 echo "
 ═══════════════════════════════════════════════════════
                  WORLD VALIDATION REPORT
 ═══════════════════════════════════════════════════════
-Campaign: $(bash tools/dm-campaign.sh active)
+Campaign: $(bash tools/gm-campaign.sh active)
 "
 
 # Quick stats
@@ -292,7 +292,7 @@ if issues:
     print('\\n'.join(issues))
 else:
     print('✅ World is ready for play!')
-    print('✅ Run /dm to begin!')
+    print('✅ Run /gm to begin!')
 " "$CAMPAIGN_DIR"
 ```
 
@@ -305,7 +305,7 @@ Based on validation results, here are quick fixes:
 ### Orphaned Locations
 ```bash
 # Connect orphaned location to nearest
-bash tools/dm-location.sh connect "[Orphaned]" "[Nearby Location]" "a winding path"
+bash tools/gm-location.sh connect "[Orphaned]" "[Nearby Location]" "a winding path"
 ```
 
 ### Missing Descriptions
@@ -317,9 +317,9 @@ bash tools/dm-location.sh connect "[Orphaned]" "[Nearby Location]" "a winding pa
 ### No Plot Facts
 ```bash
 # Quick plot generation
-bash tools/dm-note.sh "plot_local" "Strange disappearances plague the town at night"
-bash tools/dm-note.sh "plot_regional" "Ancient seals are weakening across the land"
-bash tools/dm-note.sh "plot_world" "The Dark Star approaches, heralding change"
+bash tools/gm-note.sh "plot_local" "Strange disappearances plague the town at night"
+bash tools/gm-note.sh "plot_regional" "Ancient seals are weakening across the land"
+bash tools/gm-note.sh "plot_world" "The Dark Star approaches, heralding change"
 ```
 
 ---

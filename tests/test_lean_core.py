@@ -6,8 +6,8 @@ CLAUDE.md was swapped to the lean core (the 1227-line original is in git history
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ALL_SKILLS = ["dm-combat", "dm-spellcasting", "dm-conditions", "dm-levelup",
-              "dm-dungeon", "dm-craft", "dm-skills", "dm-social"]
+ALL_SKILLS = ["gm-combat", "gm-spellcasting", "gm-conditions", "gm-levelup",
+              "gm-dungeon", "gm-craft", "gm-skills", "gm-social"]
 
 
 def _claude_md():
@@ -53,5 +53,5 @@ def test_all_skills_exist_with_frontmatter():
 
 
 def test_craft_skill_preserves_the_soul():
-    text = (ROOT / ".claude" / "skills" / "dm-craft" / "SKILL.md").read_text(encoding="utf-8")
+    text = (ROOT / ".claude" / "skills" / "gm-craft" / "SKILL.md").read_text(encoding="utf-8")
     assert "Yes, and" in text and "Persist before narrating" in text

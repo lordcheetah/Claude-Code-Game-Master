@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-World statistics module for DM tools
+World statistics module for GM tools
 Provides counts and summaries of world state
 """
 

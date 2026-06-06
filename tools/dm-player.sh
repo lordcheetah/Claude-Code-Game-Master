@@ -65,7 +65,8 @@ case "$ACTION" in
             echo "Example: dm-player.sh hp conan +5  (heal 5 HP)"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$1" "$2"
+        NAME="$1"; AMT="$2"; shift 2
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$NAME" "$AMT" "$@"
         ;;
 
     "get")
@@ -73,7 +74,8 @@ case "$ACTION" in
             echo "Usage: dm-player.sh get <character_name>"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/player_manager.py" get "$1"
+        NAME="$1"; shift
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" get "$NAME" "$@"
         ;;
 
     "gold")

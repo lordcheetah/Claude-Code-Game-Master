@@ -656,13 +656,37 @@ def main():
     cond_parser.add_argument('cond_action', choices=['add', 'remove', 'list'], help='Action to perform')
     cond_parser.add_argument('condition', nargs='?', help='Condition name (required for add/remove)')
 
-    args = parser.parse_args()
+    from cli_output import wants_json, strip_json_flag, emit, emit_error
+    json_mode = wants_json()
+    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
 
     if not args.action:
         parser.print_help()
         sys.exit(1)
 
     manager = PlayerManager()
+
+    if json_mode and args.action == 'get':
+        char = manager.get_player(args.name)
+        if char:
+            emit(char, json_mode=True)
+        else:
+            sys.exit(emit_error("player not found", json_mode=True))
+        return
+    if json_mode and args.action == 'hp':
+        import contextlib
+        import io
+        try:
+            amount = int(args.amount.lstrip('+'))
+        except ValueError:
+            sys.exit(emit_error(f"invalid HP amount: {args.amount}", json_mode=True))
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = manager.modify_hp(args.name, amount)
+        if result.get('success'):
+            emit(result, json_mode=True)
+        else:
+            sys.exit(emit_error(result.get('error', 'hp update failed'), json_mode=True))
+        return
 
     if args.action == 'show':
         if args.name:

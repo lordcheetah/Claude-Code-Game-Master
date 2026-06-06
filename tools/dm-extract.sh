@@ -28,6 +28,8 @@ Commands:
                             agent wrapper keys into the flat {name:...} runtime shape
   cap [campaign] [limit]    Cap each type to top-N (default 30) by importance
                             (mention-frequency + plot-reference/party boost)
+  integrity [campaign] [--no-strict]  Canonicalize cross-refs to real keys;
+                            fail on unresolved (strict by default)
   merge [campaign] [--cleanup]  Combine results from all extraction agents
                             --cleanup: Archive extracted/ folder after merge
   save [strategy] [campaign] Save extracted content to world state
@@ -482,6 +484,21 @@ case "$1" in
 
     cap)
         cap_extracted "$2" "$3"
+        ;;
+
+    integrity)
+        # Canonicalize cross-references; fail (exit 1) on unresolved unless --no-strict.
+        campaign_name="$2"
+        if [ -z "$campaign_name" ]; then
+            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
+        fi
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        if [ ! -d "$CAMPAIGN_DIR" ]; then
+            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
+        fi
+        echo "Running integrity gate: $campaign_name"
+        echo "================================="
+        $PYTHON_CMD "$LIB_DIR/integrity_gate.py" "$CAMPAIGN_DIR" $3
         ;;
 
     merge)

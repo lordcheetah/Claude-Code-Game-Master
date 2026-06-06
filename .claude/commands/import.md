@@ -255,6 +255,14 @@ bash tools/dm-extract.sh normalize "<campaign-name>"
 # entities aren't enhanced. Reports dropped counts to the user.
 bash tools/dm-extract.sh cap "<campaign-name>" 30
 
+# Integrity gate: canonicalize every cross-reference (plot.npcs, plot.locations,
+# npc.location_tags, location.connections) to a real entity key via the alias
+# resolver, recording variants as `aliases`. Strict by default — FAILS the import
+# on any unresolved reference. (The missing-location-reconcile pass runs
+# immediately BEFORE this and stubs/rewrites referenced-but-missing locations so
+# they resolve; until that pass exists, use --no-strict to report-only.)
+bash tools/dm-extract.sh integrity "<campaign-name>"
+
 # Archive the extracted/ folder (temporary working directory)
 bash tools/dm-extract.sh archive "<campaign-name>"
 ```

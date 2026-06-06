@@ -44,3 +44,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T16:47Z  sliced: +4 story-arc tickets → ready/ (plot-spine-extraction, threat-clock-seeding, opening-beat-seed, rules-doc-authoring)  [ship-it]
 - 2026-06-06T16:53Z  done: alias-runtime-resolver — shared entity_aliases; lookups fall back to alias/normalized (Princess Donut→Donut)  [ss-7q3w9z]
 - 2026-06-06T16:56Z  done: cap-extraction-30 — dm-extract.sh cap, top-N by importance, main cast preserved  [ss-7q3w9z]
+- 2026-06-06T16:58Z  done: import-integrity-gate — canonicalize cross-refs via alias resolver, strict fail on unresolved  [ss-7q3w9z]

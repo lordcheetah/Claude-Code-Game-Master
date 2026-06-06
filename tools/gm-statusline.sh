@@ -50,9 +50,8 @@ divider() {
 ACTIVE_FILE="$ROOT/world-state/active-campaign.txt"
 if [ ! -f "$ACTIVE_FILE" ] || [ ! -s "$ACTIVE_FILE" ]; then
     divider
-    printf '%s⚔ GM%s  %sno campaign yet%s\n' "$TEAL" "$RESET" "$DIM" "$RESET"
-    printf '  %s/dm%s %sto begin — import a book, build a world, or jump into a one-shot%s\n' \
-        "$TEAL" "$RESET" "$DIM" "$RESET"
+    printf '%s⚔ %sGM%s  %sno campaign yet%s  %s  %s%s/gm%s %sto begin — import a book, build a world, or jump into a one-shot%s\n' \
+        "$TEAL" "$BOLD" "$RESET" "$DIM" "$RESET" "$SEP" "$BOLD" "$TEAL" "$RESET" "$DIM" "$RESET"
     divider
     exit 0
 fi
@@ -64,9 +63,8 @@ OVER="$CAMP/campaign-overview.json"
 
 if [ ! -f "$CHAR" ]; then
     divider
-    printf '%s⚔ GM%s  %s%s%s  %sno character yet%s\n' "$DIM" "$RESET" "$BOLD" "$ACTIVE" "$RESET" "$DIM" "$RESET"
-    printf '  %s/dm%s %sto begin — it asks "who are you in this world?"%s\n' \
-        "$TEAL" "$RESET" "$DIM" "$RESET"
+    printf '%s⚔ %sGM%s  %s%s%s  %sno character yet%s  %s  %s%s/gm%s %sto begin — "who are you in this world?"%s\n' \
+        "$TEAL" "$BOLD" "$RESET" "$BOLD" "$ACTIVE" "$RESET" "$DIM" "$RESET" "$SEP" "$BOLD" "$TEAL" "$RESET" "$DIM" "$RESET"
     divider
     exit 0
 fi

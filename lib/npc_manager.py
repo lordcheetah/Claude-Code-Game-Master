@@ -51,10 +51,14 @@ class NPCManager(EntityManager):
             print(f"[ERROR] {error}")
             return False
 
+        # Coerce an unrecognized attitude to 'neutral' rather than aborting:
+        # creation must succeed so downstream set-inner/mood calls don't fail
+        # with "not found". Mirrors the batch-create path below.
         valid, error = self.validators.validate_attitude(attitude)
         if not valid:
-            print(f"[ERROR] {error}")
-            return False
+            print(f"[WARNING] {error}")
+            print(f"[WARNING] Defaulting attitude to 'neutral' for {name}")
+            attitude = 'neutral'
 
         # Check if NPC already exists
         if self._entity_exists(self.npcs_file, name):

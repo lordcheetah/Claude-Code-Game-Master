@@ -23,6 +23,22 @@ class CampaignManager:
         # Ensure directories exist
         self.campaigns_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _slugify(name: str) -> str:
+        """Normalize a campaign name to its folder slug (matches create())."""
+        return name.lower().replace(' ', '-')
+
+    def _resolve_name(self, name: str) -> str:
+        """Resolve a user-supplied name (display name OR slug) to the actual
+        campaign folder name. Returns the slug if no exact-folder match exists,
+        so callers still produce a sensible '<slug> does not exist' error."""
+        if (self.campaigns_dir / name).is_dir():
+            return name
+        slug = self._slugify(name)
+        if (self.campaigns_dir / slug).is_dir():
+            return slug
+        return slug
+
     def list_campaigns(self) -> List[Dict[str, Any]]:
         """
         List all campaigns with their metadata
@@ -93,6 +109,7 @@ class CampaignManager:
         Set the active campaign by name
         Returns True on success, False if campaign doesn't exist
         """
+        name = self._resolve_name(name)
         campaign_path = self.campaigns_dir / name
         if not campaign_path.is_dir():
             print(f"[ERROR] Campaign '{name}' does not exist")
@@ -114,7 +131,7 @@ class CampaignManager:
         Returns the campaign path on success, None on failure
         """
         # Normalize name for folder
-        safe_name = name.lower().replace(' ', '-')
+        safe_name = self._slugify(name)
         campaign_path = self.campaigns_dir / safe_name
 
         if campaign_path.exists():
@@ -145,6 +162,7 @@ class CampaignManager:
         Requires confirm=True to actually delete
         Returns True on success
         """
+        name = self._resolve_name(name)
         campaign_path = self.campaigns_dir / name
 
         if not campaign_path.is_dir():
@@ -179,6 +197,8 @@ class CampaignManager:
             name = self.get_active()
             if name is None:
                 return None
+        else:
+            name = self._resolve_name(name)
 
         campaign_path = self.campaigns_dir / name
         if campaign_path.is_dir():
@@ -205,6 +225,8 @@ class CampaignManager:
             if name is None:
                 print("[ERROR] No active campaign set")
                 return None
+        else:
+            name = self._resolve_name(name)
 
         campaign_path = self.campaigns_dir / name
         if not campaign_path.is_dir():

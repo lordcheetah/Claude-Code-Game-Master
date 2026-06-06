@@ -1,6 +1,9 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-06-06T20:05Z  done: world-author-consolidator — serial consolidate + compile-canon  [ss-w7k2m9]
+- 2026-06-06T19:54Z  sliced: authored-world-grounding → 7 tickets in ready/ (consolidator+kit-author claimable; rest blockedBy-gated)  [ship-it]
+- 2026-06-06T19:54Z  prd: authored-world-grounding created  [ship-it]
 - 2026-06-06T02:24Z  prd: dm-claude-reimagining created  [ship-it]
 - 2026-06-06T02:24Z  sliced: 29 tickets → ready/ (phase 0+1 claimable; 2-5 blockedBy-gated)  [ship-it]
 - 2026-06-06T02:40Z  done: test-harness-scaffold — pytest scaffold + DCC fixture + seam snapshots (8 green)  [ss-tix001]

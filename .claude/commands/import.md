@@ -274,6 +274,11 @@ bash tools/dm-extract.sh reconcile "<campaign-name>"
 # Runs BEFORE the integrity gate.
 bash tools/dm-extract.sh stub-npcs "<campaign-name>"
 
+# Stat combat NPCs: assign a coarse difficulty-proxy (hp + cr/difficulty) so every
+# combatant is runnable out of the box, and flag non-combatants statless. Exact stat
+# blocks still come from the monster-manual agent at encounter time.
+bash tools/dm-extract.sh stat-npcs "<campaign-name>"
+
 # Integrity gate: canonicalize every cross-reference (plot.npcs, plot.locations,
 # npc.location_tags, location.connections) to a real entity key via the alias
 # resolver, recording variants as `aliases`. Strict by default — FAILS the import

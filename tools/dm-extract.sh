@@ -30,6 +30,7 @@ Commands:
                             (mention-frequency + plot-reference/party boost)
   stub-npcs [campaign]      Stub plot-referenced NPCs dropped by the cap; validate
                             plot taxonomy (runs before the integrity gate)
+  stat-npcs [campaign]      Difficulty-proxy stats for combat NPCs; flag statless
   fix-items [campaign]      Item correctness: cursed flag, type taxonomy, value field
   normalize-connections [campaign]  Canonicalize connection targets; move routing
                             rule-phrases into notes (runs before reconcile)
@@ -539,6 +540,21 @@ case "$1" in
         echo "Seeding threat clocks from plots: $campaign_name"
         echo "================================="
         $PYTHON_CMD "$LIB_DIR/clock_seed.py" "$CAMPAIGN_DIR" --world-state "$WORLD_STATE_BASE"
+        ;;
+
+    stat-npcs)
+        # Assign difficulty-proxy stats to combat NPCs; flag non-combatants statless.
+        campaign_name="$2"
+        if [ -z "$campaign_name" ]; then
+            campaign_name=$(cat "$WORLD_STATE_BASE/active-campaign.txt" 2>/dev/null)
+        fi
+        CAMPAIGN_DIR="$CAMPAIGNS_DIR/$(echo "$campaign_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')"
+        if [ ! -d "$CAMPAIGN_DIR" ]; then
+            echo "Error: Campaign directory not found: $CAMPAIGN_DIR"; exit 1
+        fi
+        echo "Enriching NPC stats (difficulty proxy): $campaign_name"
+        echo "================================="
+        $PYTHON_CMD "$LIB_DIR/npc_stats.py" "$CAMPAIGN_DIR"
         ;;
 
     stub-npcs)

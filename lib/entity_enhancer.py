@@ -634,17 +634,51 @@ class EntityEnhancer:
 
         return unenhanced
 
+    # Relevance gate tuning.
+    RELEVANCE_FLOOR = 1.0   # max distance for a non-name-bearing passage to be kept
+    KEEP_TARGET = 4         # target passages per entity
+
+    @staticmethod
+    def _gate_passages(name, aliases, passages, floor=RELEVANCE_FLOOR, keep_target=KEEP_TARGET):
+        """Relevance-gate raw passages for one entity.
+
+        - Force-include every passage that literally names the entity or an alias.
+        - Fill remaining slots only with passages at/under the similarity floor
+          (drop below-floor instead of padding to a fixed N).
+        - Return (kept_passages_sorted_by_distance, name_match_fraction).
+
+        name_match_fraction = kept passages that name the entity / kept total
+        (0.0 when nothing names it — the caller flags these for curation).
+        """
+        terms = [t.lower() for t in ([name] + list(aliases or [])) if t]
+
+        def names_entity(p):
+            text = (p.get("text") or "").lower()
+            return any(term in text for term in terms)
+
+        name_bearing = [p for p in passages if names_entity(p)]
+        others = [p for p in passages if not names_entity(p) and p.get("distance", 99) <= floor]
+
+        # Force-include all name-bearing; fill the rest from floor-passing others.
+        fill = max(0, keep_target - len(name_bearing))
+        others_sorted = sorted(others, key=lambda p: p.get("distance", 99))
+        kept = name_bearing + others_sorted[:fill]
+        kept.sort(key=lambda p: p.get("distance", 99))
+
+        frac = (len(name_bearing) / len(kept)) if kept else 0.0
+        return kept, frac
+
     def batch_enhance(self, max_entities: Optional[int] = None) -> Dict[str, int]:
         """
-        Batch enhance all unenhanced entities.
+        Batch enhance all unenhanced entities, relevance-gated.
 
-        Queries RAG for each entity and stores the top passages.
-
-        Args:
-            max_entities: Optional limit on entities to process
+        Queries RAG for each entity, force-includes name-bearing passages, drops
+        below-floor neighbours, and persists per-passage scores + a name-match
+        fraction. Entities with zero name-bearing passages are flagged
+        (`enhanced_low_relevance`) for curation rather than padded with noise.
 
         Returns:
-            Dict with counts: enhanced, skipped, total
+            Dict with counts: enhanced, skipped, low_relevance, total
         """
         unenhanced = self.list_unenhanced()
 
@@ -654,6 +688,7 @@ class EntityEnhancer:
         total = len(unenhanced)
         enhanced = 0
         skipped = 0
+        low_relevance = 0
 
         print(f"Found {total} unenhanced entities\n")
 
@@ -663,27 +698,40 @@ class EntityEnhancer:
 
             print(f"[{i}/{total}] {etype}: {name}... ", end="", flush=True)
 
-            # Query RAG for passages
-            passages = self.query_passages(name, etype, n_results=3)
+            # Pull a wider candidate set, then gate.
+            passages = self.query_passages(name, etype, n_results=8)
 
             if not passages:
                 print("skipped (no passages)")
                 skipped += 1
                 continue
 
-            # Extract passage texts
-            context_texts = [p.get('text', '')[:500] for p in passages if p.get('text')]
+            found = self.find_entity(name)
+            aliases = (found or {}).get("data", {}).get("aliases", []) if found else []
+            kept, frac = self._gate_passages(name, aliases, passages)
 
+            context_texts = [p.get('text', '')[:500] for p in kept if p.get('text')]
             if not context_texts:
-                print("skipped (empty passages)")
+                print("skipped (no relevant passages)")
                 skipped += 1
                 continue
 
-            # Apply enhancement
-            success = self.apply_enhancements(etype, name, context_texts)
+            scores = [round(float(p.get('distance', 0.0)), 4) for p in kept if p.get('text')]
+            success = self.apply_enhancements(
+                etype, name, context_texts,
+                additional_fields={
+                    "context_scores": scores,
+                    "context_name_match_fraction": round(frac, 3),
+                    "enhanced_low_relevance": frac == 0.0,
+                },
+            )
 
             if success:
-                print("enhanced!")
+                if frac == 0.0:
+                    low_relevance += 1
+                    print(f"enhanced (LOW relevance — 0 name-bearing)")
+                else:
+                    print(f"enhanced! (name-match {frac:.0%})")
                 enhanced += 1
             else:
                 print("failed")
@@ -692,6 +740,7 @@ class EntityEnhancer:
         return {
             "enhanced": enhanced,
             "skipped": skipped,
+            "low_relevance": low_relevance,
             "total": total
         }
 
@@ -913,6 +962,7 @@ def main():
         print("=" * 40)
         print(f"Enhanced: {result['enhanced']}")
         print(f"Skipped:  {result['skipped']}")
+        print(f"Low-relevance (0 name-bearing, flagged): {result.get('low_relevance', 0)}")
         print(f"Total:    {result['total']}")
 
 

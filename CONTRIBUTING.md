@@ -71,12 +71,15 @@ ruff check . --fix
 
 ##### Testing
 
-Run tests before submitting:
+Run tests before submitting (pytest is in the `dev` extra):
 ```bash
-pytest tests/
+uv pip install pytest   # first time
+uv run pytest
 ```
 
-Add new tests for your features in the `tests/` directory.
+Tests are hermetic: they copy the Dungeon Crawler Carl golden fixture
+(`tests/fixtures/world-state/`) into a tmp dir, so they never touch a live
+campaign. Add new tests for your features in the `tests/` directory.
 
 #### Commit Messages
 

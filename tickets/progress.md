@@ -31,3 +31,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T05:16Z  done: longterm-memory — campaign-memory recall + tiered memoir + provenance  [ss-tix001]
 - 2026-06-06T05:18Z  done: loremaster-per-scene — grounded cached briefs + gated deep reads + book-first agents  [ss-tix001]
 - 2026-06-06T05:22Z  done: claudemd-extract-tables — 5 mechanics Skills + router mapping (inline fallback kept)  [ss-tix001]
+- 2026-06-06T05:23Z  in-review: bible-confirm-gate — draft-then-confirm gate (WorldBible confirm/is_playable)  [ss-tix001]

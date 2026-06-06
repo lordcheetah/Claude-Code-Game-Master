@@ -75,6 +75,38 @@ class WorldBible:
     def signature_systems(self) -> List[Any]:
         return self.bible.get('signature_systems', [])
 
+    # --- draft-then-confirm gate ---
+    def is_confirmed(self) -> bool:
+        """A newly-drafted bible is `confirmed: false` until a human approves it.
+
+        Legacy campaigns / hand-authored bibles (no flag) count as confirmed so the
+        gate only blocks freshly auto-drafted worlds.
+        """
+        return bool(self.bible.get('confirmed', True))
+
+    def is_playable(self) -> bool:
+        """A world is playable unless it has an unconfirmed auto-drafted bible."""
+        if not self.bible:
+            return True  # no bible (e.g. /new-game) -> nothing to confirm
+        return self.is_confirmed()
+
+    def confirm(self) -> bool:
+        """Mark the drafted world approved + persist."""
+        self.bible['confirmed'] = True
+        return self.json_ops.save_json("world-bible.json", self.bible)
+
+    def review_summary(self) -> Dict[str, Any]:
+        """The human-facing draft to review before play (voice/factions/systems)."""
+        return {
+            'name': self.bible.get('name'),
+            'tone': self.bible.get('tone'),
+            'voice_style': self.voice().get('style'),
+            'themes': self.bible.get('themes', []),
+            'factions': [n.get('name') for n in self.factions().get('nodes', [])],
+            'signature_systems': self.signature_systems(),
+            'confirmed': self.is_confirmed(),
+        }
+
 
 def main():
     import argparse

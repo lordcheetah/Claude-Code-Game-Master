@@ -249,6 +249,18 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/npc_manager.py" voice "$NAME" "$@"
         ;;
 
+    inner-life)
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" inner-life "$NAME" "$@"
+        ;;
+
+    set-inner)
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" set-inner "$NAME" "$@"
+        ;;
+
+    mood)
+        $PYTHON_CMD "$LIB_DIR/npc_manager.py" mood "$NAME" "$@"
+        ;;
+
     *)
         echo "Error: Unknown action '$ACTION'"
         echo "Run 'dm-npc.sh' without arguments to see all available actions"

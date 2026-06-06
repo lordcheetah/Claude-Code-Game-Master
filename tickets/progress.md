@@ -23,3 +23,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T04:56Z  done: generic-core — system-agnostic resolution/harm/conditions + 3 progression models  [ss-tix001]
 - 2026-06-06T04:58Z  done: world-kit-schema — ruleset.json + WorldKit loader + DCC kit (resource-axis)  [ss-tix001]
 - 2026-06-06T05:02Z  done: open-character-schema — migration + kit-aware validation + kit-driven XP  [ss-tix001]
+- 2026-06-06T05:05Z  done: npc-innerlife-schema — goal/secret/mood/voice/bonds additive + surfaced  [ss-tix001]

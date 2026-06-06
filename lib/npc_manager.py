@@ -276,6 +276,34 @@ class NPCManager(EntityManager):
             return [context.strip()]
         return []
 
+    # NPC inner life (additive; defaults so legacy NPCs load unchanged).
+    INNER_LIFE_FIELDS = ('goal', 'secret', 'current_mood', 'voice', 'bonds')
+
+    def get_inner_life(self, name: str) -> Optional[Dict[str, Any]]:
+        """Return an NPC's inner life with safe defaults, or None if not found."""
+        npc = self.get_npc_status(name)
+        if npc is None:
+            return None
+        return {
+            'goal': npc.get('goal', ''),
+            'secret': npc.get('secret', ''),
+            'current_mood': npc.get('current_mood', 'neutral'),
+            'voice': npc.get('voice', ''),
+            'bonds': npc.get('bonds', {}),
+        }
+
+    def set_inner_life(self, name: str, **fields) -> bool:
+        """Set any of goal/secret/current_mood/voice/bonds (additive)."""
+        updates = {k: v for k, v in fields.items()
+                   if k in self.INNER_LIFE_FIELDS and v is not None}
+        if not updates:
+            return False
+        return self._update_entity(self.npcs_file, name, updates)
+
+    def shift_mood(self, name: str, mood: str) -> bool:
+        """Update an NPC's current_mood (persists across sessions)."""
+        return self._update_entity(self.npcs_file, name, {'current_mood': mood})
+
     def _manage_tags(self, name: str, tag_type: str, tags: tuple, action: str) -> bool:
         """
         Internal method to manage tags
@@ -810,6 +838,19 @@ def main():
     voice_parser = subparsers.add_parser('voice', help='Get NPC canonical voice lines')
     voice_parser.add_argument('name', help='NPC name')
 
+    # Inner life (goal/secret/mood/voice/bonds)
+    inner_parser = subparsers.add_parser('inner-life', help='Get NPC inner life')
+    inner_parser.add_argument('name', help='NPC name')
+    setinner_parser = subparsers.add_parser('set-inner', help='Set NPC inner life fields')
+    setinner_parser.add_argument('name', help='NPC name')
+    setinner_parser.add_argument('--goal')
+    setinner_parser.add_argument('--secret')
+    setinner_parser.add_argument('--mood')
+    setinner_parser.add_argument('--voice')
+    mood_parser = subparsers.add_parser('mood', help='Shift NPC current mood')
+    mood_parser.add_argument('name', help='NPC name')
+    mood_parser.add_argument('mood', help='New mood')
+
     # List NPCs
     list_parser = subparsers.add_parser('list', help='List NPCs')
     list_parser.add_argument('--attitude', help='Filter by attitude')
@@ -940,6 +981,22 @@ def main():
             sys.exit(1)
         import json
         print(json.dumps(voice, indent=2))
+
+    elif args.action == 'inner-life':
+        il = manager.get_inner_life(args.name)
+        if il is None:
+            sys.exit(1)
+        import json
+        print(json.dumps(il, indent=2))
+
+    elif args.action == 'set-inner':
+        if not manager.set_inner_life(args.name, goal=args.goal, secret=args.secret,
+                                      current_mood=args.mood, voice=args.voice):
+            sys.exit(1)
+
+    elif args.action == 'mood':
+        if not manager.shift_mood(args.name, args.mood):
+            sys.exit(1)
 
     elif args.action == 'list':
         npcs = manager.list_npcs(args.attitude, args.location, args.quest)

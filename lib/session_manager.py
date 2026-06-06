@@ -474,7 +474,16 @@ class SessionManager(EntityManager):
             lines.append("")
             lines.append("--- NPC VOICES (present NPCs, speak in their own words) ---")
             for npc_name, vlines in npc_voices:
-                lines.append(f"{npc_name}:")
+                inner = npcs.get(npc_name, {}) if isinstance(npcs, dict) else {}
+                tags = []
+                if inner.get('current_mood'):
+                    tags.append(f"mood: {inner['current_mood']}")
+                if inner.get('goal'):
+                    tags.append(f"wants: {inner['goal']}")
+                if inner.get('secret'):
+                    tags.append("has a secret")  # existence only — never the secret text
+                header = npc_name + (f" ({'; '.join(tags)})" if tags else "")
+                lines.append(f"{header}:")
                 for vl in vlines:
                     lines.append(f'  "{vl}"')
 

@@ -35,3 +35,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T05:25Z  in-review: threat-clocks-choice-beats — named pressure clocks + context surfacing  [ss-tix001]
 - 2026-06-06T05:27Z  in-review: between-session-worldtick — bounded off-screen developments + rollback  [ss-tix001]
 - 2026-06-06T05:28Z  in-review: identity-first-onboarding — canon/original/nameless → open-schema char  [ss-tix001]
+- 2026-06-06T05:30Z  in-review: claudemd-lean-core-router — dm-craft skill + proposed 80-line lean core  [ss-tix001]

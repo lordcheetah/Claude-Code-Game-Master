@@ -1,0 +1,47 @@
+"""Tests for between-session-worldtick: bounded off-screen developments + rollback."""
+
+import json
+from pathlib import Path
+
+from lib.world_tick import WorldTick
+
+
+def _active(dcc_world):
+    p = Path(dcc_world) / "campaigns" / "dungeon-crawler-carl" / "consequences.json"
+    return json.loads(p.read_text(encoding="utf-8")).get("active", [])
+
+
+DEVS = [
+    {"text": "A rival crew claims Floor 3 territory", "trigger_type": "on_location", "match": "Floor 3"},
+    {"text": "Mordecai sends word of a new threat", "trigger": "next visit"},
+    {"text": "Viewer interest spikes around the party"},
+    {"text": "An old ally resurfaces"},
+    {"text": "A fifth development that exceeds the cap"},
+]
+
+
+def test_cap_is_enforced(dcc_world):
+    applied = WorldTick(dcc_world).apply(DEVS, cap=3)
+    assert len(applied) == 3
+    texts = " ".join(c["consequence"] for c in _active(dcc_world))
+    assert "rival crew" in texts and "fifth development" not in texts
+
+
+def test_disabled_is_a_noop_tone_respecting(dcc_world):
+    before = len(_active(dcc_world))
+    applied = WorldTick(dcc_world).apply(DEVS, enabled=False)
+    assert applied == [] and len(_active(dcc_world)) == before
+
+
+def test_tick_is_logged_and_rollbackable(dcc_world):
+    wt = WorldTick(dcc_world)
+    before = len(_active(dcc_world))
+    wt.apply(DEVS, cap=2)
+    assert len(_active(dcc_world)) == before + 2
+    assert wt.history()  # provenance log
+    assert wt.rollback_last() is True
+    assert len(_active(dcc_world)) == before  # developments removed
+
+
+def test_rollback_without_a_tick_is_safe(dcc_world):
+    assert WorldTick(dcc_world).rollback_last() is False

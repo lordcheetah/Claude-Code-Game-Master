@@ -20,3 +20,4 @@ Append-only, newest first. One line per board-level event. See `README.md`.
 - 2026-06-06T04:50Z  done: json-wrappers-consequence — --json envelope for check/add  [ss-tix001]
 - 2026-06-06T04:52Z  done: json-wrappers-player — --json envelope for get/hp  [ss-tix001]
 - 2026-06-06T04:54Z  done: json-wrappers-npc — --json envelope for status/voice/update  [ss-tix001]
+- 2026-06-06T04:56Z  done: generic-core — system-agnostic resolution/harm/conditions + 3 progression models  [ss-tix001]

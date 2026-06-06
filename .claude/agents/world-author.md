@@ -50,7 +50,7 @@ contract — wrong shape = silently dropped):
   "npcs": {
     "<Name>": {
       "description": "<who they are + their hook>",
-      "attitude": "friendly | neutral | suspicious | hostile | helpful | curious | dismissive",
+      "attitude": "ally | friendly | helpful | neutral | suspicious | hostile | enemy",
       "tags": { "locations": ["<Name>"], "quests": [] }
     }
   },

@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-06-06T20:24Z  done: creation-grounding-eval — e2e grounding eval (live RAG hit) + fixed invalid attitude enum in world-author  [ss-w7k2m9]
 - 2026-06-06T20:22Z  done: new-game-orchestration — /new-game rewritten seed→skeleton→fanout→reconcile→ground (manual lane; 1 human-judgement note)  [ss-w7k2m9]
 - 2026-06-06T20:19Z  done: world-reconciler-agent — critic+kit↔flavor+crosslink (manual lane; 1 human-judgement note)  [ss-w7k2m9]
 - 2026-06-06T20:18Z  done: world-author-agent — parameterized per-axis author (contract round-trips)  [ss-w7k2m9]

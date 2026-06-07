@@ -92,9 +92,18 @@ class ViewManager(EntityManager):
 # READ PATH — campaign-dir resolution + safe state load (no EntityManager).
 # ---------------------------------------------------------------------------
 
-# The five files the canvas reads. Each is loaded defensively: a missing or
-# malformed file degrades to {} so the render never crashes mid-scene.
-_STATE_FILES = ("view", "character", "npcs", "locations", "campaign-overview")
+# The files the canvas reads, mapped state-key -> filename. Each is loaded
+# defensively: a missing or malformed file degrades to {} so the render never
+# crashes mid-scene. (Explicit map, not name-mangling — "overview" and "combat"
+# don't match their filenames.)
+_STATE_FILES = {
+    "view": "view.json",
+    "character": "character.json",
+    "npcs": "npcs.json",
+    "locations": "locations.json",
+    "overview": "campaign-overview.json",
+    "combat": "combat_state.json",
+}
 
 
 def resolve_campaign_dir(world_state_dir: str = "world-state"):
@@ -114,13 +123,13 @@ def load_state(campaign_dir) -> dict:
     """
     base = Path(campaign_dir)
 
-    def _safe(name):
+    def _safe(filename):
         try:
-            return json.loads((base / f"{name}.json").read_text(encoding="utf-8"))
+            return json.loads((base / filename).read_text(encoding="utf-8"))
         except Exception:
             return {}
 
-    state = {name.replace("-", "_"): _safe(name) for name in _STATE_FILES}
+    state = {key: _safe(fn) for key, fn in _STATE_FILES.items()}
     state["_active"] = True
     return state
 
@@ -310,6 +319,36 @@ def _here_rows(state: dict) -> list:
     return rows
 
 
+def _combat_rows(combat: dict) -> list:
+    """Build COMBAT panel rows from combat_state.json, ordered by initiative.
+
+    The active turn (turn_index) is marked with ▸; sides are color-tagged
+    (enemy red, ally/player green). Empty/absent combat → caller hides the panel.
+    """
+    combatants = combat.get("combatants") or []
+    ti = combat.get("turn_index", 0)
+    # Mark the active combatant by object identity so duplicate names/ties stay
+    # correct even after we re-sort a copy by initiative.
+    active = combatants[ti] if 0 <= ti < len(combatants) else None
+    ordered = sorted(combatants, key=lambda c: c.get("initiative", 0), reverse=True)
+
+    rows = []
+    for c in ordered:
+        marker = f"{GOLD}▸{RESET}" if c is active else " "
+        name = c.get("name", "?")
+        cur, mx = c.get("hp_current", 0), c.get("hp_max", 0)
+        side = c.get("side", "enemy")
+        side_c = RED if side == "enemy" else GREEN
+        conds = c.get("conditions") or []
+        cond = f" {AMBER}({', '.join(conds)}){RESET}" if conds else ""
+        dead = f" {RED}💀{RESET}" if isinstance(cur, int) and cur <= 0 else ""
+        rows.append(
+            f"{marker} {BOLD}{name}{RESET} {hp_bar(cur, mx)} {cur}/{mx} "
+            f"{side_c}[{side}]{RESET}{cond}{dead}"
+        )
+    return rows
+
+
 def _two_col_divider(cols: int, lw: int, rw: int, left_label: str, right_label: str, junction: str) -> str:
     """A column divider with a junction (┬ to open, ┴ to close) and two labels."""
     def seg(label, span):
@@ -373,6 +412,15 @@ def compose_frame(state: dict, cols: int, rows: int) -> str:
         tail += [framed_line(r, cols) for r in party]
         tail.append(hrule(cols, label="HERE"))
         tail += [framed_line(r, cols) for r in here]
+
+    # COMBAT panel — only when a fight is active; sits above PARTY/HERE so the
+    # most urgent state reads first. Hidden otherwise (layout unchanged).
+    combat = state.get("combat") or {}
+    if combat.get("combatants"):
+        combat_block = [hrule(cols, label=f"COMBAT · Round {combat.get('round', 1)}")]
+        combat_block += [framed_line(r, cols) for r in _combat_rows(combat)]
+        tail = combat_block + tail
+
     tail.append(footer)
     tail.append(bottom_border(cols))
 

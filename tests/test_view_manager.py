@@ -181,3 +181,87 @@ def test_compose_stacks_when_narrow():
     # Stacked layout uses full-width PARTY then HERE dividers (no ┬ junction).
     assert "┬" not in out
     assert {visible_len(l) for l in out.splitlines()} == {60}
+
+
+# --- canvas-combat-panel: auto COMBAT panel from combat_state.json ----------
+
+import json as _json
+
+from lib.view_manager import GOLD
+
+
+def _base_state(**over):
+    state = {
+        "_active": True,
+        "view": {"title": "T", "body": "x", "updated": ""},
+        "character": {"name": "Tandy", "hp": {"current": 40, "max": 80}},
+        "npcs": {}, "locations": {},
+        "overview": {"current_date": "Day 4", "time_of_day": "Dusk"},
+    }
+    state.update(over)
+    return state
+
+
+def test_overview_key_loads_under_overview(dcc_world):
+    # Regression: load_state must expose campaign-overview.json under "overview"
+    # (not "campaign_overview"), or the header clock silently vanishes.
+    state = load_state(resolve_campaign_dir(dcc_world))
+    assert "overview" in state
+    assert "campaign_overview" not in state
+    assert isinstance(state["overview"], dict) and state["overview"]
+
+
+def test_load_state_includes_combat(dcc_world):
+    state = load_state(resolve_campaign_dir(dcc_world))
+    assert "combat" in state  # present even if {} when no combat file
+
+
+def test_combat_panel_active_render():
+    combat = {
+        "active": True, "round": 3, "turn_index": 1,
+        "combatants": [
+            {"name": "Goblin", "hp_current": 3, "hp_max": 12, "initiative": 18, "side": "enemy", "conditions": ["prone"]},
+            {"name": "Tandy", "hp_current": 40, "hp_max": 80, "initiative": 20, "side": "player", "conditions": []},
+            {"name": "Dead Orc", "hp_current": 0, "hp_max": 15, "initiative": 5, "side": "enemy"},
+        ],
+    }
+    out = compose_frame(_base_state(combat=combat), 80, 24)
+    flat = _strip(out)
+    assert "COMBAT · Round 3" in flat
+    # Ordered by initiative desc: Tandy (20) before Goblin (18) before Dead Orc (5).
+    assert flat.index("Tandy") < flat.index("Goblin") < flat.index("Dead Orc")
+    assert "[enemy]" in flat and "[player]" in flat
+    assert "(prone)" in flat            # conditions shown
+    assert "▸" in out                   # active-turn marker
+    assert {visible_len(l) for l in out.splitlines() if "💀" not in l} == {80}
+
+
+def test_combat_active_turn_marker_tracks_turn_index():
+    # turn_index points at the SECOND stored combatant; after init-desc sort it
+    # is the highest-initiative one — the marker must follow the object, not the slot.
+    combat = {
+        "active": True, "round": 1, "turn_index": 1,
+        "combatants": [
+            {"name": "Low", "hp_current": 5, "hp_max": 5, "initiative": 1, "side": "enemy"},
+            {"name": "High", "hp_current": 5, "hp_max": 5, "initiative": 99, "side": "enemy"},
+        ],
+    }
+    out = compose_frame(_base_state(combat=combat), 80, 20)
+    line = [l for l in out.splitlines() if "High" in l][0]
+    assert "▸" in line          # the marked combatant is High (the turn_index target)
+    low = [l for l in out.splitlines() if "Low" in l][0]
+    assert "▸" not in low
+
+
+def test_combat_hidden_when_inactive():
+    # No combat key, empty combatants, and explicit inactive all hide the panel.
+    assert "COMBAT" not in _strip(compose_frame(_base_state(), 80, 18))
+    assert "COMBAT" not in _strip(compose_frame(_base_state(combat={}), 80, 18))
+    assert "COMBAT" not in _strip(compose_frame(_base_state(combat={"active": False, "combatants": []}), 80, 18))
+
+
+def test_combat_hp_max_zero_no_crash():
+    combat = {"active": True, "round": 1, "turn_index": 0,
+              "combatants": [{"name": "Wraith", "hp_current": 0, "hp_max": 0, "initiative": 1, "side": "enemy"}]}
+    out = compose_frame(_base_state(combat=combat), 80, 18)  # must not raise
+    assert "0/0" in _strip(out)

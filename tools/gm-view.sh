@@ -3,9 +3,10 @@
 #
 # The canvas is a persistent second-pane game view the GM draws into.
 #   scene/clear : write the agent-authored scene (needs an active campaign).
-#   render      : draw the framed panel to stdout (degrades to a placeholder
+#   render      : draw the framed panel once to stdout (degrades to a placeholder
 #                 with no campaign, so NO require_active_campaign).
-# (The live `watch` loop is a later canvas ticket.)
+#   watch       : live-redraw the pane in a long-running process. Run it in a
+#                 second terminal (e.g. a VS Code split): bash tools/gm-view.sh watch
 
 source "$(dirname "$0")/common.sh"
 
@@ -16,11 +17,13 @@ if [ "$#" -lt 1 ]; then
     echo "  scene --title <title>    - Push a scene onto the canvas (body read from stdin)"
     echo "  clear                    - Clear the canvas (keeps the file)"
     echo "  render                   - Render the canvas panel to stdout (one-shot)"
+    echo "  watch                    - Live-redraw the canvas pane (run in a 2nd terminal; Ctrl+C to exit)"
     echo ""
     echo "Examples:"
     echo "  echo \"\$MAP_ART\" | gm-view.sh scene --title \"The Sunken Crypt\""
     echo "  gm-view.sh clear"
     echo "  gm-view.sh render"
+    echo "  gm-view.sh watch"
     exit 1
 fi
 
@@ -44,9 +47,15 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/view_manager.py" render
         ;;
 
+    watch)
+        # exec so SIGINT/SIGTERM reach Python directly (clean alt-screen restore).
+        # No campaign guard: the watcher starts on a placeholder and auto-populates.
+        exec $PYTHON_CMD "$LIB_DIR/view_manager.py" watch
+        ;;
+
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: scene, clear, render"
+        echo "Valid actions: scene, clear, render, watch"
         exit 1
         ;;
 esac

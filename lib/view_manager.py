@@ -473,6 +473,86 @@ def render() -> None:
     print(compose_frame(state, cols, rows))
 
 
+# ---------------------------------------------------------------------------
+# WATCH — the live pane. A long-running, user-launched process (NOT an
+# agent-called tool) that redraws the frame whenever campaign state changes.
+# Polling, not inotify/watchdog: zero new deps, and the writer's atomic
+# temp+rename means any single read is coherent.
+# ---------------------------------------------------------------------------
+
+# Terminal control sequences.
+_ALT_ENTER = "\033[?1049h"  # switch to alternate screen buffer
+_ALT_LEAVE = "\033[?1049l"  # restore the previous buffer (and scrollback)
+_CURSOR_HIDE = "\033[?25l"
+_CURSOR_SHOW = "\033[?25h"
+_CURSOR_HOME = "\033[H"
+_CLEAR_TO_END = "\033[J"
+
+WATCH_POLL_SECONDS = 0.25
+
+
+def _watch_signature(campaign_dir, cols, rows) -> str:
+    """A cheap change-token: campaign + terminal size + mtime of each watched file.
+
+    Any change flips the signature so the loop redraws; nothing changing means no
+    redraw (no flicker, near-zero CPU). A missing file uses a '-' sentinel, so a
+    file appearing/disappearing (e.g. combat starting) also flips it.
+    """
+    parts = [str(campaign_dir), str(cols), str(rows)]
+    if campaign_dir is not None:
+        base = Path(campaign_dir)
+        for filename in _STATE_FILES.values():
+            try:
+                parts.append(str((base / filename).stat().st_mtime_ns))
+            except OSError:
+                parts.append("-")
+    return "|".join(parts)
+
+
+def run_watch(poll: float = WATCH_POLL_SECONDS) -> None:
+    """Take over the pane and live-redraw the canvas until interrupted.
+
+    Uses the alternate screen so the user's scrollback is untouched, and restores
+    the cursor + buffer cleanly on Ctrl+C / SIGTERM / any exit.
+    """
+    import time
+    import signal
+
+    out = sys.stdout
+
+    def _restore(*_):
+        out.write(_CURSOR_SHOW + _ALT_LEAVE)
+        out.flush()
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGINT, _restore)
+    signal.signal(signal.SIGTERM, _restore)
+
+    out.write(_ALT_ENTER + _CURSOR_HIDE)
+    out.flush()
+    last_sig = None
+    try:
+        while True:
+            campaign_dir = resolve_campaign_dir()
+            cols, rows = shutil.get_terminal_size((80, 24))
+            sig = _watch_signature(campaign_dir, cols, rows)
+            if sig != last_sig:
+                last_sig = sig
+                if campaign_dir is None:
+                    state = {"_active": False}
+                else:
+                    state = load_state(campaign_dir)
+                frame = compose_frame(state, cols, rows)
+                # Home → draw → clear-to-end: overwrite in place, wipe any taller
+                # previous frame's leftovers. No full clear, so no flicker.
+                out.write(_CURSOR_HOME + frame + _CLEAR_TO_END)
+                out.flush()
+            time.sleep(poll)
+    finally:
+        out.write(_CURSOR_SHOW + _ALT_LEAVE)
+        out.flush()
+
+
 def main():
     """CLI interface for the canvas."""
     import argparse
@@ -492,6 +572,9 @@ def main():
     # render — one-shot framed panel to stdout (no active-campaign guard)
     subparsers.add_parser("render", help="Render the canvas panel to stdout")
 
+    # watch — live, long-running pane (user-launched; no active-campaign guard)
+    subparsers.add_parser("watch", help="Live-redraw the canvas pane (Ctrl+C to exit)")
+
     args = parser.parse_args()
 
     if not args.action:
@@ -500,6 +583,10 @@ def main():
 
     if args.action == "render":
         render()
+        return
+
+    if args.action == "watch":
+        run_watch()
         return
 
     manager = ViewManager()

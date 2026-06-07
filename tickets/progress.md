@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-06-07T21:42Z  done: canvas-watch-loop — live alt-screen watcher (0.25s mtime/size signature, no-flicker redraw, clean SIGINT restore); manual core machine-verified, visual eyeball pending  [ss-cnvs01]
 - 2026-06-07T21:38Z  done: canvas-combat-panel — auto COMBAT panel (Round N, initiative order, HP bars, side tags, ▸ turn) + fixed overview-key load bug  [ss-cnvs01]
 - 2026-06-07T21:15Z  done: canvas-render-compose — compose_frame renders header+SCENE+PARTY|HERE+footer panel via gm-view.sh render (HUD palette, side-by-side/stacked)  [ss-cnvs01]
 - 2026-06-07T20:55Z  done: canvas-view-writer — ViewManager + gm-view.sh push freeform scenes to view.json (atomic, ANSI-safe, 64KB cap)  [ss-cnvs01]

@@ -265,3 +265,39 @@ def test_combat_hp_max_zero_no_crash():
               "combatants": [{"name": "Wraith", "hp_current": 0, "hp_max": 0, "initiative": 1, "side": "enemy"}]}
     out = compose_frame(_base_state(combat=combat), 80, 18)  # must not raise
     assert "0/0" in _strip(out)
+
+
+# --- canvas-watch-loop: change-signature (live behavior is manual-lane) ------
+
+from pathlib import Path as _Path
+
+from lib.view_manager import _watch_signature, _STATE_FILES
+
+
+def test_signature_changes_on_terminal_resize(dcc_world):
+    d = resolve_campaign_dir(dcc_world)
+    assert _watch_signature(d, 80, 24) != _watch_signature(d, 100, 24)
+    assert _watch_signature(d, 80, 24) != _watch_signature(d, 80, 40)
+
+
+def test_signature_distinguishes_no_campaign(dcc_world):
+    d = resolve_campaign_dir(dcc_world)
+    assert _watch_signature(None, 80, 24) != _watch_signature(d, 80, 24)
+
+
+def test_signature_changes_when_watched_file_changes(dcc_world):
+    d = resolve_campaign_dir(dcc_world)
+    before = _watch_signature(d, 80, 24)
+    # A scene write bumps view.json's mtime -> signature must flip (live redraw).
+    ViewManager(dcc_world).set_scene("New", "art")
+    assert _watch_signature(d, 80, 24) != before
+
+
+def test_signature_includes_combat_state(dcc_world):
+    # combat_state.json must be watched so the COMBAT panel updates live.
+    assert "combat_state.json" in _STATE_FILES.values()
+    d = resolve_campaign_dir(dcc_world)
+    before = _watch_signature(d, 80, 24)
+    # Creating the combat file (sentinel '-' -> real mtime) flips the signature.
+    (_Path(d) / "combat_state.json").write_text('{"active":true,"combatants":[]}', encoding="utf-8")
+    assert _watch_signature(d, 80, 24) != before

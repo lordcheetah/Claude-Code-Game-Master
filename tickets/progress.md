@@ -1,6 +1,7 @@
 # Progress Log
 
 Append-only, newest first. One line per board-level event. See `README.md`.
+- 2026-06-07T21:15Z  done: canvas-render-compose — compose_frame renders header+SCENE+PARTY|HERE+footer panel via gm-view.sh render (HUD palette, side-by-side/stacked)  [ss-cnvs01]
 - 2026-06-07T20:55Z  done: canvas-view-writer — ViewManager + gm-view.sh push freeform scenes to view.json (atomic, ANSI-safe, 64KB cap)  [ss-cnvs01]
 - 2026-06-06T20:36Z  done: gm-craft-voice — gm-craft narrates to the NARRATIVE VOICE block (manual lane; 1 human-judgement note)  [ss-w7k2m9]
 - 2026-06-06T20:35Z  done: import-voice-capture — book_bible.draft_voice (verbatim) + import Step 6.7  [ss-w7k2m9]

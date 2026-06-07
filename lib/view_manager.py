@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
 """
-View manager — the write half of the canvas.
+View manager — the canvas.
 
 The canvas is a persistent second-pane surface the GM can *draw* into: maps,
-scene art, spatial state that would otherwise vanish on the next turn. This
-module owns the write path only — it persists the agent-authored scene to
-``view.json``. The read/watch/render path (auto-derived PARTY/HERE/COMBAT
-panels) is added by later canvas tickets and must NOT use EntityManager, whose
-__init__ raises when no campaign is active.
+scene art, spatial state that would otherwise vanish on the next turn.
+
+Two halves live here:
+  WRITE — ``ViewManager(EntityManager)`` persists the agent-authored scene to
+          ``view.json`` (guarded by an active campaign).
+  READ  — module-level ``resolve_campaign_dir`` / ``load_state`` / ``compose_frame``
+          turn campaign state + the scene into a framed ASCII/ANSI panel. The read
+          path must NOT use EntityManager, whose __init__ *raises* with no campaign;
+          it resolves the dir directly and degrades to a placeholder instead.
 
 view.json = {"title": str, "body": str, "updated": ISO8601}
-Only the agent-authored scene lives here; panels are derived live, never stored.
+Only the agent-authored scene lives here; the PARTY/HERE panels are derived live
+from character.json / npcs.json / locations.json / campaign-overview.json — never
+stored stale. (The COMBAT panel and the live watch loop are later canvas tickets.)
 """
 
+import re
 import sys
+import json
+import shutil
 from pathlib import Path
+from datetime import datetime, timezone
 
 # Add lib directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
+from campaign_manager import CampaignManager
 
 # Keep the canvas file bounded — a runaway scene shouldn't bloat campaign state.
 MAX_BODY_CHARS = 64 * 1024
@@ -77,11 +88,348 @@ class ViewManager(EntityManager):
         return self.json_ops.save_json(self.VIEW_FILE, data)
 
 
+# ---------------------------------------------------------------------------
+# READ PATH — campaign-dir resolution + safe state load (no EntityManager).
+# ---------------------------------------------------------------------------
+
+# The five files the canvas reads. Each is loaded defensively: a missing or
+# malformed file degrades to {} so the render never crashes mid-scene.
+_STATE_FILES = ("view", "character", "npcs", "locations", "campaign-overview")
+
+
+def resolve_campaign_dir(world_state_dir: str = "world-state"):
+    """Return the active campaign dir as a Path, or None if none is active.
+
+    Uses CampaignManager directly (returns None gracefully) — never
+    EntityManager, whose __init__ raises when no campaign is set.
+    """
+    return CampaignManager(world_state_dir).get_active_campaign_dir()
+
+
+def load_state(campaign_dir) -> dict:
+    """Safe-load the canvas's source files from a campaign dir.
+
+    Every read is wrapped — a missing/corrupt file becomes {} rather than an
+    exception. Returns a dict keyed by short name (view/character/npcs/...).
+    """
+    base = Path(campaign_dir)
+
+    def _safe(name):
+        try:
+            return json.loads((base / f"{name}.json").read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    state = {name.replace("-", "_"): _safe(name) for name in _STATE_FILES}
+    state["_active"] = True
+    return state
+
+
+# ---------------------------------------------------------------------------
+# RENDER — frame state into an ASCII/ANSI panel. 256-color palette + HP-bar
+# thresholds ported verbatim from tools/gm-statusline.sh.
+# ---------------------------------------------------------------------------
+
+GREEN = "\033[38;5;42m"
+AMBER = "\033[38;5;214m"
+RED = "\033[38;5;203m"
+TEAL = "\033[38;5;51m"
+GOLD = "\033[38;5;220m"
+DIM = "\033[38;5;244m"
+FAINT = "\033[38;5;238m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def visible_len(s: str) -> int:
+    """Length of a string ignoring ANSI color escapes (for padding math)."""
+    return len(_ANSI_RE.sub("", s))
+
+
+def clip_visible(s: str, n: int) -> str:
+    """Clip to n VISIBLE chars, preserving escape sequences; append RESET.
+
+    Color codes are zero-width and copied through; only printable chars count
+    toward n. RESET is appended whenever the string carried color or was cut,
+    so a clipped line never bleeds its color into the frame border.
+    """
+    if n <= 0:
+        return ""
+    out, count, i, truncated, had_escape = [], 0, 0, False, False
+    while i < len(s):
+        m = _ANSI_RE.match(s, i)
+        if m:
+            out.append(m.group())
+            had_escape = True
+            i = m.end()
+            continue
+        if count >= n:
+            truncated = True
+            break
+        out.append(s[i])
+        count += 1
+        i += 1
+    res = "".join(out)
+    if had_escape or truncated:
+        res += RESET
+    return res
+
+
+def _cell(s: str, width: int) -> str:
+    """Clip then right-pad a string to exactly `width` visible columns."""
+    s = clip_visible(s, width)
+    return s + " " * (width - visible_len(s))
+
+
+def _center(s: str, width: int) -> str:
+    """Center a string within `width` visible columns."""
+    pad = width - visible_len(s)
+    if pad <= 0:
+        return clip_visible(s, width)
+    left = pad // 2
+    return " " * left + s + " " * (pad - left)
+
+
+def framed_line(content: str, cols: int) -> str:
+    """A full-width content row: │ <content padded to inner width> │."""
+    inner = cols - 4
+    return f"{FAINT}│{RESET} {_cell(content, inner)} {FAINT}│{RESET}"
+
+
+def top_border(cols: int) -> str:
+    return f"{FAINT}╭{'─' * (cols - 2)}╮{RESET}"
+
+
+def bottom_border(cols: int) -> str:
+    return f"{FAINT}╰{'─' * (cols - 2)}╯{RESET}"
+
+
+def hrule(cols: int, label: str = None) -> str:
+    """A full-width labeled section divider: ├─ LABEL ───────────┤."""
+    inner = cols - 2
+    if label:
+        plain = f"─ {label} "
+        fill = max(0, inner - len(plain))
+        mid = f"{FAINT}─ {TEAL}{BOLD}{label}{RESET}{FAINT} " + "─" * fill
+        return f"{FAINT}├{mid}┤{RESET}"
+    return f"{FAINT}├{'─' * inner}┤{RESET}"
+
+
+def hp_bar(cur, mx, width: int = 10) -> str:
+    """Colored HP bar — thresholds match gm-statusline.sh (≥50 green, ≥25 amber, else red)."""
+    try:
+        cur = int(cur)
+        mx = int(mx)
+    except (TypeError, ValueError):
+        cur, mx = 0, 0
+    if mx > 0:
+        pct = cur * 100 // mx
+        filled = cur * width // mx
+    else:
+        pct, filled = 0, 0
+    filled = max(0, min(width, filled))
+    empty = width - filled
+    color = GREEN if pct >= 50 else AMBER if pct >= 25 else RED
+    return f"{color}{'█' * filled}{'░' * empty}{RESET}"
+
+
+def _relative(ts: str) -> str:
+    """Humanize an ISO8601 timestamp as a relative 'Xs/Xm/Xh/Xd ago'."""
+    if not ts:
+        return "never"
+    try:
+        t = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        delta = (datetime.now(timezone.utc) - t).total_seconds()
+    except Exception:
+        return ts
+    delta = max(0, delta)
+    if delta < 60:
+        return f"{int(delta)}s ago"
+    if delta < 3600:
+        return f"{int(delta // 60)}m ago"
+    if delta < 86400:
+        return f"{int(delta // 3600)}h ago"
+    return f"{int(delta // 86400)}d ago"
+
+
+def _party_rows(state: dict) -> list:
+    """Build PARTY panel rows: the player, then every is_party_member NPC."""
+    char = state.get("character") or {}
+    rows = []
+    if char:
+        hp = char.get("hp") or {}
+        cur, mx = hp.get("current", 0), hp.get("max", 0)
+        name = char.get("name", "?")
+        meta = " ".join(
+            str(x) for x in (f"Lv{char.get('level', 1)}", char.get("race"), char.get("class")) if x
+        )
+        row = f"{TEAL}⚔ {BOLD}{name}{RESET} {DIM}{meta}{RESET} {hp_bar(cur, mx)} {cur}/{mx}"
+        conds = char.get("conditions") or []  # handles conditions: null
+        if conds:
+            row += f"  {AMBER}({', '.join(conds)}){RESET}"
+        rows.append(row)
+
+    for nm, nd in (state.get("npcs") or {}).items():
+        if not isinstance(nd, dict) or not nd.get("is_party_member"):
+            continue
+        sheet = nd.get("character_sheet")
+        if not sheet:
+            rows.append(f"{DIM}• {nm}{RESET}")  # no sheet → name only, no bar
+            continue
+        hp = sheet.get("hp") or {}
+        cur, mx = hp.get("current", 0), hp.get("max", 0)
+        rows.append(
+            f"{DIM}•{RESET} {BOLD}{nm}{RESET} {DIM}Lv{sheet.get('level', 1)}{RESET} "
+            f"{hp_bar(cur, mx)} {cur}/{mx}"
+        )
+    return rows or [f"{FAINT}(no party){RESET}"]
+
+
+def _here_rows(state: dict) -> list:
+    """Build HERE panel rows: current location + its connections."""
+    over = state.get("overview") or {}
+    char = state.get("character") or {}
+    loc = (over.get("player_position") or {}).get("current_location") or char.get(
+        "current_location"
+    ) or "Unknown"
+    rows = [f"{AMBER}{BOLD}{loc}{RESET}"]
+    locdata = (state.get("locations") or {}).get(loc) or {}
+    conns = locdata.get("connections") or []
+    if conns:
+        for c in conns:
+            to = c.get("to", "?") if isinstance(c, dict) else str(c)
+            path = c.get("path", "") if isinstance(c, dict) else ""
+            tail = f" {FAINT}({path}){RESET}" if path else ""
+            rows.append(f"{DIM}→{RESET} {to}{tail}")
+    else:
+        rows.append(f"{FAINT}(no known exits){RESET}")
+    return rows
+
+
+def _two_col_divider(cols: int, lw: int, rw: int, left_label: str, right_label: str, junction: str) -> str:
+    """A column divider with a junction (┬ to open, ┴ to close) and two labels."""
+    def seg(label, span):
+        if label:
+            plain = f"─ {label} "
+            fill = max(0, span - len(plain))
+            return f"─ {TEAL}{BOLD}{label}{RESET}{FAINT} " + "─" * fill
+        return "─" * span
+    left = seg(left_label, lw + 2)
+    right = seg(right_label, rw + 2)
+    return f"{FAINT}├{left}{junction}{right}┤{RESET}"
+
+
+def compose_frame(state: dict, cols: int, rows: int) -> str:
+    """Render campaign state + the authored scene into one framed panel string.
+
+    Layout: header (title · clock) → SCENE → PARTY|HERE (side-by-side ≥72 cols,
+    else stacked) → footer (updated relative). Every emitted line is exactly
+    `cols` visible columns wide. No active campaign → centered placeholder.
+    """
+    cols = max(40, min(200, cols))
+    rows = max(8, rows)
+
+    if not state or not state.get("_active"):
+        return _placeholder(cols, rows)
+
+    view = state.get("view") or {}
+    over = state.get("overview") or {}
+    title = view.get("title") or "Untitled Scene"
+    clock = " · ".join(x for x in (over.get("current_date", ""), over.get("time_of_day", "")) if x)
+
+    # --- head: top border + header + SCENE divider --------------------------
+    head = [top_border(cols)]
+    inner = cols - 4
+    header = f"{TEAL}◆ {BOLD}{title}{RESET}"
+    right = f"{DIM}{clock}{RESET}"
+    gap = inner - visible_len(header) - visible_len(right)
+    if gap < 1:
+        header = clip_visible(header, max(0, inner - visible_len(right) - 1))
+        gap = inner - visible_len(header) - visible_len(right)
+    head.append(framed_line(header + " " * max(0, gap) + right, cols))
+    head.append(hrule(cols, label="SCENE"))
+
+    # --- tail: PARTY/HERE panels + footer + bottom border -------------------
+    party = _party_rows(state)
+    here = _here_rows(state)
+    footer = framed_line(f"{FAINT}updated {_relative(view.get('updated', ''))}{RESET}", cols)
+
+    if cols >= 72:
+        # Side-by-side columns sharing a central │ separator.
+        lw = (cols - 7) // 2
+        rw = cols - 7 - lw
+        tail = [_two_col_divider(cols, lw, rw, "PARTY", "HERE", "┬")]
+        for i in range(max(len(party), len(here))):
+            l = party[i] if i < len(party) else ""
+            r = here[i] if i < len(here) else ""
+            tail.append(f"{FAINT}│{RESET} {_cell(l, lw)} {FAINT}│{RESET} {_cell(r, rw)} {FAINT}│{RESET}")
+        tail.append(_two_col_divider(cols, lw, rw, "", "", "┴"))
+    else:
+        tail = [hrule(cols, label="PARTY")]
+        tail += [framed_line(r, cols) for r in party]
+        tail.append(hrule(cols, label="HERE"))
+        tail += [framed_line(r, cols) for r in here]
+    tail.append(footer)
+    tail.append(bottom_border(cols))
+
+    # --- scene region fills the space between head and tail -----------------
+    scene_h = rows - len(head) - len(tail)
+    if scene_h < 1:
+        scene_h = 1
+    body = view.get("body") or ""
+    body_lines = body.split("\n") if body else []
+    scene = []
+    if not body_lines:
+        scene.append(framed_line(f"{FAINT}(no scene drawn — paint here with gm-view.sh scene){RESET}", cols))
+    elif len(body_lines) <= scene_h:
+        scene = [framed_line(ln, cols) for ln in body_lines]
+    else:
+        shown = body_lines[: scene_h - 1]
+        hidden = len(body_lines) - len(shown)
+        scene = [framed_line(ln, cols) for ln in shown]
+        scene.append(framed_line(f"{DIM}… (+{hidden} lines){RESET}", cols))
+    # Pad the scene region so the panels anchor at the bottom (cockpit feel).
+    while len(scene) < scene_h:
+        scene.append(framed_line("", cols))
+
+    return "\n".join(head + scene + tail)
+
+
+def _placeholder(cols: int, rows: int) -> str:
+    """Centered placeholder shown when no campaign is active."""
+    msg = f"{TEAL}⚔ DM{RESET} {DIM}— no active campaign{RESET} {FAINT}(/new-game or /import){RESET}"
+    lines = [top_border(cols)]
+    body_h = rows - 2
+    pad_top = max(0, (body_h - 1) // 2)
+    for _ in range(pad_top):
+        lines.append(framed_line("", cols))
+    lines.append(framed_line(_center(msg, cols - 4), cols))
+    for _ in range(body_h - pad_top - 1):
+        lines.append(framed_line("", cols))
+    lines.append(bottom_border(cols))
+    return "\n".join(lines)
+
+
+def render() -> None:
+    """One-shot render of the current canvas to stdout (no alt-screen)."""
+    campaign_dir = resolve_campaign_dir()
+    if campaign_dir is None:
+        state = {"_active": False}
+    else:
+        state = load_state(campaign_dir)
+    cols, rows = shutil.get_terminal_size((80, 24))
+    print(compose_frame(state, cols, rows))
+
+
 def main():
-    """CLI interface for the canvas writer."""
+    """CLI interface for the canvas."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Canvas view writer")
+    parser = argparse.ArgumentParser(description="Canvas view panel")
     subparsers = parser.add_subparsers(dest="action", help="Action to perform")
 
     # scene — body comes from stdin (avoids multi-line ASCII shell-escaping)
@@ -93,11 +441,18 @@ def main():
     # clear — blank the canvas but keep the file
     subparsers.add_parser("clear", help="Clear the canvas (keeps the file)")
 
+    # render — one-shot framed panel to stdout (no active-campaign guard)
+    subparsers.add_parser("render", help="Render the canvas panel to stdout")
+
     args = parser.parse_args()
 
     if not args.action:
         parser.print_help()
         sys.exit(1)
+
+    if args.action == "render":
+        render()
+        return
 
     manager = ViewManager()
 

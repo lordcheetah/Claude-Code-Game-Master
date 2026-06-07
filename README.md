@@ -164,7 +164,20 @@ All tools follow the pattern `bash tools/gm-<tool>.sh <command> [args]`. Most ac
 | `gm-enhance.sh` | RAG-powered entity enrichment |
 | `gm-extract.sh` | Document import and extraction pipeline |
 | `gm-overview.sh` | Quick world-state summary |
+| `gm-view.sh` | Canvas view panel — push scene art, render/watch the live pane |
 | `gm-reset.sh` | Reset campaign data |
+
+### The Live Canvas
+
+The status-bar HUD is a fixed strip; the **canvas** is a full second pane the GM can draw into — dungeon maps, scene art, party/location/combat status that stays put while play continues.
+
+Open a **second terminal** (a VS Code split terminal is ideal, but any second tab in Warp/iTerm/etc. works) and run:
+
+```bash
+bash tools/gm-view.sh watch
+```
+
+The pane shows the current **scene** (drawn by the GM), plus auto-derived **PARTY**, **HERE**, and **COMBAT** panels read live from campaign state — no GM effort needed. It redraws within ~250 ms of any state change, starts even before a campaign is active, and `Ctrl+C` restores your terminal cleanly. (`gm-view.sh render` prints the panel once instead of watching.)
 
 ### Dependencies
 

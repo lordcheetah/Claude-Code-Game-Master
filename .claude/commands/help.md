@@ -46,6 +46,7 @@ Display all available commands and tools.
   gm-enhance.sh     Enrich entities with RAG
   gm-overview.sh    Quick world summary
   gm-campaign.sh    Switch between campaigns
+  gm-view.sh        Canvas view panel (scene / clear / render / watch)
 
 ================================================================
 
@@ -54,6 +55,13 @@ Display all available commands and tools.
   New campaign:     /new-game
   Continue playing: /gm
   Import module:    /import
+
+  LIVE CANVAS (optional)
+  --------------------------------------------------------
+  Open a second terminal (VS Code split terminal works best),
+  then run:   bash tools/gm-view.sh watch
+  A persistent pane shows the current scene, party, location,
+  and live combat. Starts before a campaign exists; Ctrl+C exits.
 
 ================================================================
 ```

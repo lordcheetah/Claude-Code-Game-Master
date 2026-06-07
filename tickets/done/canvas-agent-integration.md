@@ -7,10 +7,10 @@ priority: p2
 lane: manual
 parentPrd: canvas-view-panel
 blockedBy: [canvas-watch-loop, canvas-combat-panel]
-claimedBy: null
-claimedAt: null
-changedFiles: []
-resolution: null
+claimedBy: ss-cnvs01
+claimedAt: 2026-06-07T21:45:00Z
+changedFiles: [CLAUDE.md, README.md, .claude/commands/help.md]
+resolution: "Document the canvas: optional view-panel note in lean CLAUDE.md (Output Format), launch UX in README + /help (gm-view.sh watch in a second pane), supersedes the old no-auto-enemy-HP guidance"
 createdAt: 2026-06-06T16:06:57Z
 updatedAt: 2026-06-06T16:06:57Z
 ---
@@ -45,9 +45,9 @@ canvas-combat-panel make it auto when `dm-combat` is used.
 
 ## Acceptance criteria
 
-- [ ] `CLAUDE.md` gains a concise optional view-panel note (or a one-line pointer to a skill that holds it) consistent with lean-core structure — no bloat, no revival of the removed 5e map section.
-- [ ] The note states the `scene`/`clear` commands and that PARTY/HERE/COMBAT are auto-derived (COMBAT via `dm-combat`).
-- [ ] Launch instructions (VS Code split terminal → `dm-view.sh watch`) are documented where a player will find them.
+- [x] `CLAUDE.md` gains a concise optional view-panel note (or a one-line pointer to a skill that holds it) consistent with lean-core structure — no bloat, no revival of the removed 5e map section.
+- [x] The note states the `scene`/`clear` commands and that PARTY/HERE/COMBAT are auto-derived (COMBAT via `gm-combat`).
+- [x] Launch instructions (VS Code split terminal → `gm-view.sh watch`) are documented where a player will find them.
 
 ## Verification
 
@@ -65,6 +65,26 @@ canvas-watch-loop, canvas-combat-panel
 
 <!-- newest first -->
 
+### 2026-06-07T21:48:00Z — pass (manual/doc lane) [ss-cnvs01]
+Doc-only ticket; verification is wording review (yours to confirm).
+
+- `CLAUDE.md` → one tight bullet under **Output Format**: optional view panel,
+  the `scene --title`/`clear` commands, PARTY/HERE auto + COMBAT auto via
+  `gm-combat`, "never draw HP bars/exits yourself", and "if no one's watching,
+  ignore it". No revival of the removed 5e "When to Draw Maps" section; lean tone.
+- `README.md` → new **The Live Canvas** subsection (launch UX: second terminal /
+  VS Code split → `gm-view.sh watch`, what the panels show, ~250ms redraw, starts
+  pre-campaign, Ctrl+C clean) + a `gm-view.sh` row in the Bash Tools table.
+- `.claude/commands/help.md` → `gm-view.sh` in the CLI tool list + a LIVE CANVAS
+  block under QUICK START.
+- All documented commands verified against the shipped wrapper (`scene --title`,
+  `clear`, `render`, `watch`). Supersedes the original "enemy HP is not
+  auto-tracked" guidance — now auto when `gm-combat` is used.
+- [naming] Ticket text used `dm-view.sh`/`dm-combat`; documented as `gm-*` to
+  match the project's actual tool names.
+
 ## History
 
 - 2026-06-06T16:06:57Z  created → ready  [ship-it]
+- 2026-06-07T21:45:00Z  claimed  [ss-cnvs01]
+- 2026-06-07T21:48:00Z  done: pass → done  [ss-cnvs01]

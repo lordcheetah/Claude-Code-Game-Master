@@ -59,8 +59,11 @@ a Dune import ships its own combat/progression, not 5e. Resolution + harm +
 conditions + the three progression models live in `lib/game_core.py`.
 
 ## Dice
-`uv run python lib/dice.py "[notation]"` — `1d20+5`, `2d20kh1+3` (advantage),
+`bash tools/roll.sh "[notation]"` — `1d20+5`, `2d20kh1+3` (advantage),
 `2d20kl1` (disadvantage), `3d6`. One roll per command. Never inline dice.
+(`roll.sh` is the standard, allowlist-safe wrapper around `lib/dice.py` — no
+per-roll permission prompt. The raw `uv run python lib/dice.py "[notation]"`
+still works if you ever need it directly.)
 
 ## Movement (non-dungeon)
 1. Validate destination (`gm-search.sh`); reachable? obstacles? 2. Travel time (adjacent 1 min · district 15-30 min · <5 mi 1-2 hr · 5-20 mi 2-8 hr · day trip 8-10 hr; stealth ×2, running ÷2, difficult terrain ×2, mounted ×0.75). 3. `bash tools/gm-session.sh move "[loc]"` + `gm-time.sh` (auto-creates the location, checks consequences, runs the reactivity tick). 4. Arrival awareness: Passive Perception = 10 + Wis mod; mention what beats the hidden DC. 5. Narrate. (Dungeons → `gm-dungeon` skill.)

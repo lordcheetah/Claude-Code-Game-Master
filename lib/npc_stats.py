@@ -52,7 +52,15 @@ def enrich_npc(npc: dict) -> str:
     """Assign proxy stats or a statless flag. Returns 'combat' | 'statless' | 'skip'."""
     if not isinstance(npc, dict):
         return "skip"
-    stats = npc.setdefault("stats", {})
+    # setdefault only fills a MISSING key; extractor agents often emit "stats": null
+    # (or a prose stat line), so coerce any non-dict value into a dict here,
+    # preserving the original under `raw` so nothing is lost.
+    stats = npc.get("stats")
+    if not isinstance(stats, dict):
+        orig, stats = stats, {}
+        if orig not in (None, "", [], {}):
+            stats["raw"] = orig
+        npc["stats"] = stats
     if is_combatant(npc):
         tier = _tier(npc)
         # don't clobber a real hp/cr if one was already present

@@ -9,7 +9,7 @@ Persist combat with `bash tools/gm-combat.sh` (start/add-enemy/hp/condition/next
 
 ## Flow
 1. Get enemy stats (`features/dnd-api/monsters/dnd_monster.py "[creature]" --combat` or quick: AC 13, HP 15, +3, 1d6+1).
-2. Initiative: `uv run python lib/dice.py "1d20+[dex]"` per combatant; order high→low.
+2. Initiative: `bash tools/roll.sh "1d20+[dex]"` per combatant; order high→low.
 3. Each turn: attack `1d20+bonus` vs AC; on hit roll damage; update HP via `gm-combat.sh hp`.
 4. Resolution: award XP, handle loot (persist BEFORE narrating), advance time.
 

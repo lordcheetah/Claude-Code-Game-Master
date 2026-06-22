@@ -182,7 +182,15 @@ def roll_formatted(notation: str) -> str:
 def main():
     """CLI interface for dice rolling"""
     import sys
-    
+
+    # Ensure emoji/box-drawing output survives consoles with a legacy codepage
+    # (e.g. Windows cp1252), where the default stdout encoding can't encode 🎲.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass  # older Python, or a stream that doesn't support reconfigure
+
     if len(sys.argv) < 2:
         print("Usage: dice.py <notation>")
         print("Examples: 1d20, 3d6+2, 2d20kh1 (advantage), 2d20kl1 (disadvantage)")

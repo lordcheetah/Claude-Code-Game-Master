@@ -1,4 +1,28 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(world-state/**)",
+      "Edit(world-state/**)",
+      "Write(world-state/**)",
+      "Bash(bash tools/roll.sh*)",
+      "Bash(bash tools/gm-search.sh*)",
+      "Bash(bash tools/gm-context.sh*)",
+      "Bash(bash tools/gm-overview.sh*)",
+      "Bash(bash tools/gm-recall.sh*)",
+      "Bash(bash tools/gm-session.sh*)",
+      "Bash(bash tools/gm-player.sh*)",
+      "Bash(bash tools/gm-npc.sh*)",
+      "Bash(bash tools/gm-note.sh*)",
+      "Bash(bash tools/gm-consequence.sh*)",
+      "Bash(bash tools/gm-condition.sh*)",
+      "Bash(bash tools/gm-combat.sh*)",
+      "Bash(bash tools/gm-time.sh*)",
+      "Bash(bash tools/gm-location.sh*)",
+      "Bash(bash tools/gm-plot.sh*)",
+      "Bash(bash tools/gm-campaign.sh*)",
+      "Bash(bash tools/gm-enhance.sh*)"
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash tools/gm-statusline.sh"

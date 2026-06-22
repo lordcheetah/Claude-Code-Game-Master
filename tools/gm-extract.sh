@@ -364,7 +364,7 @@ validate_extraction() {
         if [ ! -f "$file" ]; then
             echo "  $type: ❌ MISSING"
             all_valid=false
-        elif ! $PYTHON_CMD -c "import json; json.load(open('$file'))" 2>/dev/null; then
+        elif ! $PYTHON_CMD -c "import json,sys; json.load(open(sys.argv[1], encoding='utf-8'))" "$file" 2>/dev/null; then
             echo "  $type: ❌ INVALID JSON"
             all_valid=false
         else
@@ -375,7 +375,10 @@ validate_extraction() {
                 items) key="items" ;;
                 plots) key="plot_hooks" ;;
             esac
-            count=$($PYTHON_CMD -c "import json; d=json.load(open('$file')); print(len(d.get('$key', d)))" 2>/dev/null || echo "0")
+            # Pass paths as argv, not interpolated into -c: Git Bash only converts
+            # /c/-style paths to C:\ for bare args, not inside quoted code strings,
+            # so a native-Windows python can't open an embedded MSYS path.
+            count=$($PYTHON_CMD -c "import json,sys; d=json.load(open(sys.argv[1], encoding='utf-8')); print(len(d.get(sys.argv[2], d)))" "$file" "$key" 2>/dev/null || echo "0")
             if [ "$count" -eq 0 ]; then
                 echo "  $type: ⚠️  EMPTY (0 entities)"
             else
@@ -439,15 +442,70 @@ normalize_extracted() {
 import json, sys
 src, dst, key, type_name, lib_dir = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
 try:
-    d = json.load(open(src))
+    d = json.load(open(src, encoding="utf-8"))
 except FileNotFoundError:
     print(f"  {type_name}: MISSING (skipped)")
     sys.exit(0)
-# Unwrap a {key: {...}} wrapper if present; otherwise the file is already flat.
-flat = d.get(key, d) if isinstance(d, dict) else d
-if not isinstance(flat, dict):
+
+def name_of(item, i):
+    if isinstance(item, dict):
+        for k in ("name", "title", "part_title", "id"):
+            if item.get(k):
+                return str(item[k])
+    sing = type_name[:-1] if type_name.endswith("s") else type_name
+    return f"{sing}_{i + 1}"
+
+def add_source_str(item):
+    # Downstream (plot_spine, clock_seed) regex a `source` STRING for chunk numbers;
+    # extractor agents emit a `source_chunks` list instead. Bridge the two.
+    if isinstance(item, dict) and "source" not in item:
+        sc = item.get("source_chunks")
+        if isinstance(sc, list) and sc:
+            item["source"] = ", ".join(f"chunk_{c}" for c in sc)
+
+# Locate the entity payload inside whatever wrapper the agent emitted. Agents are
+# inconsistent: a flat {name:{...}} dict, a {key:{...}} wrapper, OR (commonly) a
+# {meta..., "<plural>": [ {...}, ... ]} wrapper with the entities under a LIST.
+payload = None
+if isinstance(d, dict):
+    for k in (key, type_name, "plot_hooks", "plots", "parts"):
+        if isinstance(d.get(k), (list, dict)) and d[k]:
+            payload = d[k]
+            break
+    if payload is None:
+        if d and all(isinstance(v, dict) for v in d.values()):
+            payload = d  # already a flat {name: {...}} dict
+        else:
+            lists = [v for v in d.values() if isinstance(v, list)]
+            if lists:
+                payload = max(lists, key=len)  # biggest list = the entities
+else:
+    payload = d
+
+if isinstance(payload, list):
+    flat = {}
+    for i, item in enumerate(payload):
+        if not isinstance(item, dict):
+            item = {"value": item}
+        add_source_str(item)
+        flat[name_of(item, i)] = item
+elif isinstance(payload, dict):
+    flat = payload
+    for v in flat.values():
+        add_source_str(v)
+else:
     print(f"  {type_name}: unexpected shape, copied verbatim")
     flat = d
+
+# Plots: the spine selects the MAIN arc by `type`, and the context loader needs a
+# `description`. Each extracted part is a main story beat — fill the gaps.
+if type_name == "plots" and isinstance(flat, dict):
+    for v in flat.values():
+        if isinstance(v, dict):
+            v.setdefault("type", "main")
+            if not v.get("description"):
+                v["description"] = v.get("synopsis") or v.get("premise") or ""
+
 # Coerce bare-string location connections to {"to": name} dicts so the runtime
 # (move, integrity) never sees a string where it indexes conn["to"].
 if type_name == "locations" and isinstance(flat, dict):
@@ -456,7 +514,7 @@ if type_name == "locations" and isinstance(flat, dict):
     n = coerce_connections(flat)
     if n:
         print(f"  {type_name}: coerced {n} string connection(s) to dict shape")
-json.dump(flat, open(dst, "w"), indent=2)
+json.dump(flat, open(dst, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 print(f"  {type_name}: {len(flat)} entities -> {type_name}.json (flat)")
 PY
     done

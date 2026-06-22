@@ -20,6 +20,14 @@ find_python() {
 # Set up Python command
 PYTHON_CMD=$(find_python)
 
+# Force UTF-8 mode for every child Python process. On Windows the interpreter
+# otherwise defaults stdio + open() to the legacy cp1252 codepage, which crashes
+# on the em-dashes/smart-quotes in book content (e.g. `gm-session.sh context`,
+# called every beat) and mis-reads UTF-8 JSON. PYTHONUTF8=1 fixes both at the
+# source for the whole toolchain; harmless on macOS/Linux (already UTF-8).
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+
 # Get project root directory (parent of tools/)
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -69,8 +77,11 @@ CAMPAIGNS_DIR="$WORLD_STATE_BASE/campaigns"
 mkdir -p "$WORLD_STATE_BASE"
 mkdir -p "$CAMPAIGNS_DIR"
 
-# Set paths dynamically based on active campaign
-WORLD_STATE_DIR=$(get_campaign_dir)
+# Set paths dynamically based on active campaign.
+# get_campaign_dir returns exit 1 when no campaign is active yet (e.g. before the
+# first import). Guard the assignment so scripts that source this under `set -e`
+# don't abort silently on a fresh install.
+WORLD_STATE_DIR=$(get_campaign_dir) || WORLD_STATE_DIR=""
 
 # Only set file paths if we have an active campaign
 if [ -n "$WORLD_STATE_DIR" ]; then

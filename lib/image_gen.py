@@ -1,4 +1,4 @@
-"""image_gen.py — GM scene illustration via OpenAI gpt-image-2.
+"""image_gen.py — GM scene illustration (OpenAI gpt-image-2 OR Google Gemini).
 
 The GM calls this at high-impact beats (new location, boss reveal, big loot) to
 show the player a real image. The image is saved into the active campaign's
@@ -6,11 +6,18 @@ show the player a real image. The image is saved into the active campaign's
 a clickable link. Every generation is logged with an estimated cost so spend is
 auditable.
 
+Two providers are supported and chosen automatically:
+  * gemini — Google's ``gemini-2.5-flash-image`` (Nano Banana). FREE on the
+    Gemini API free tier. Used when GEMINI_API_KEY (or GOOGLE_API_KEY) is set.
+  * openai — ``gpt-image-2``. Used when only OPENAI_API_KEY is set.
+Set GM_IMAGE_PROVIDER=gemini|openai to force one when both keys are present
+(default preference: gemini, since the free tier costs nothing).
+
 Display path: we DON'T try to render pixels in the terminal. We save a PNG and
 return its path; the VS Code terminal linkifies the path so the player clicks to
 open it.
 
-No third-party SDK — the request is a single JSON POST, done with stdlib urllib
+No third-party SDK — each request is a single JSON POST, done with stdlib urllib
 so the project gains no new dependency.
 """
 
@@ -118,6 +125,30 @@ DEFAULT_QUALITY = os.environ.get("OPENAI_IMAGE_QUALITY", "medium")
 DEFAULT_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1536x1024")  # cinematic landscape
 REQUEST_TIMEOUT = 180  # gpt-image-2 can take up to ~2 min on complex prompts
 
+# --- Gemini (Google Generative Language API) -------------------------------
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+GEMINI_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+# Free tier costs nothing; log 0 by default. Override if you move to paid
+# (gemini-2.5-flash-image is ~$0.039/image on the paid tier).
+GEMINI_COST = float(os.environ.get("GEMINI_IMAGE_COST_USD", "0") or 0)
+
+
+def active_provider() -> str:
+    """Which image backend to use: 'gemini', 'openai', or '' if none configured.
+
+    GM_IMAGE_PROVIDER forces a choice; otherwise we prefer Gemini (free tier)
+    when its key is present, then fall back to OpenAI.
+    """
+    forced = os.environ.get("GM_IMAGE_PROVIDER", "").strip().lower()
+    if forced in ("gemini", "openai"):
+        return forced
+    if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
+        return "gemini"
+    if os.environ.get("OPENAI_API_KEY"):
+        return "openai"
+    return ""
+
+
 # Published gpt-image-2 per-image USD pricing (docs). Used only to LOG estimated
 # spend — not billed here. Unknown size/quality combos report None (logged as ?).
 _COST = {
@@ -130,6 +161,18 @@ _COST = {
 def estimate_cost(quality: str, size: str):
     """Return the published per-image USD cost, or None if not in the table."""
     return _COST.get(quality, {}).get(size)
+
+
+# Map our pixel sizes to the aspect ratios Gemini's imageConfig accepts.
+_GEMINI_ASPECT = {
+    "1536x1024": "3:2",   # cinematic landscape (our default)
+    "1024x1536": "2:3",   # portrait
+    "1024x1024": "1:1",   # square
+}
+
+
+def _size_to_aspect(size: str) -> str:
+    return _GEMINI_ASPECT.get(size, "16:9")
 
 
 SLUG_MAX = 32  # keep filenames (and the file:// link) short enough not to line-wrap
@@ -147,16 +190,33 @@ def _slug(title: str) -> str:
     return s.strip("-") or "scene"
 
 
-def _next_path(images_dir: Path, title: str) -> Path:
-    """Sequenced filename: NNNN-slug.png, continuing the highest existing index."""
+def _next_path(images_dir: Path, title: str, ext: str = ".png") -> Path:
+    """Sequenced filename: NNNN-slug<ext>, continuing the highest existing index.
+
+    Indexing counts every NNNN-*.* image (png, jpg, …) so generated and imported
+    pictures share one monotonic sequence.
+    """
     images_dir.mkdir(parents=True, exist_ok=True)
     highest = 0
-    for p in images_dir.glob("[0-9][0-9][0-9][0-9]-*.png"):
+    for p in images_dir.glob("[0-9][0-9][0-9][0-9]-*.*"):
         try:
             highest = max(highest, int(p.name[:4]))
         except ValueError:
             continue
-    return images_dir / f"{highest + 1:04d}-{_slug(title)}.png"
+    return images_dir / f"{highest + 1:04d}-{_slug(title)}{ext}"
+
+
+def _detect_image_ext(data: bytes) -> str:
+    """Return the file extension for known image bytes, or '' if unrecognized."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    if data[:4] == b"GIF8":
+        return ".gif"
+    return ""
 
 
 # Short, shallow symlink dir so the clickable file:// link never line-wraps.
@@ -198,47 +258,18 @@ class ImageGenError(Exception):
     """Raised for user-correctable failures (missing key, moderation, bad request)."""
 
 
-def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALITY,
-                   size: str = DEFAULT_SIZE, model: str = DEFAULT_MODEL,
-                   characters=None) -> dict:
-    """Generate one image and save it under the active campaign's images/ dir.
+class ProviderUnavailable(ImageGenError):
+    """Provider failed transiently (429 quota/rate limit, 5xx, network).
 
-    ``characters`` is an optional list of character names in frame; each one's
-    canonical visual_appearance block is auto-injected into the prompt so the PC
-    and NPCs render CONSISTENTLY image-to-image, even on direct/fallback calls.
-
-    Returns {path, rel_path, cost, model, quality, size, title}. Raises
-    ImageGenError for actionable problems (no campaign, no key, moderation).
+    These are the cases another provider might succeed at, so generate_image
+    catches this to fall back (e.g. Gemini free tier → OpenAI). Subclasses
+    ImageGenError so callers that don't fall back still report it cleanly.
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise ImageGenError(
-            "OPENAI_API_KEY not set. Add it to .env (OPENAI_API_KEY=sk-...) to enable images."
-        )
 
-    campaign_dir = resolve_campaign_dir()
-    if campaign_dir is None:
-        raise ImageGenError("No active campaign. Run /new-game or /import first.")
 
-    if not prompt or not prompt.strip():
-        raise ImageGenError("Empty prompt — describe the scene to illustrate.")
-
-    final_prompt = prompt
-
-    # Auto-inject each named character's canonical look so the PC/NPCs render
-    # consistently every time. Skipped if the caller already spelled it out.
-    for cname in (characters or []):
-        line = appearance_line(cname, campaign_dir)
-        if line and cname.strip().lower() not in prompt.lower():
-            final_prompt = f"{final_prompt.rstrip()}\n\nCharacter (render exactly): {line}"
-
-    # Lock the campaign's art-style signature into every prompt so the gallery
-    # reads like one artbook even if the caller forgets to restate the style.
-    chronicler = load_chronicler(campaign_dir)
-    style = (chronicler or {}).get("style", "").strip()
-    if style and style.lower() not in final_prompt.lower():
-        final_prompt = f"{final_prompt.rstrip()}\n\nConsistent art style (campaign signature): {style}."
-
+def _generate_openai_bytes(final_prompt: str, *, quality: str, size: str,
+                           model: str, api_key: str) -> bytes:
+    """POST to OpenAI's image API and return the decoded PNG bytes."""
     payload = json.dumps({
         "model": model,
         "prompt": final_prompt,
@@ -266,20 +297,152 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
         raise ImageGenError(f"Network error reaching OpenAI: {e.reason}") from e
 
     try:
-        b64 = body["data"][0]["b64_json"]
-        image_bytes = base64.b64decode(b64)
+        return base64.b64decode(body["data"][0]["b64_json"])
     except (KeyError, IndexError, ValueError) as e:
         raise ImageGenError("Unexpected response from image API (no image data).") from e
+
+
+def _generate_gemini_bytes(final_prompt: str, *, size: str, model: str,
+                           api_key: str) -> bytes:
+    """POST to the Gemini image model and return the decoded PNG bytes."""
+    payload = json.dumps({
+        "contents": [{"parts": [{"text": final_prompt}]}],
+        "generationConfig": {
+            "responseModalities": ["TEXT", "IMAGE"],
+            "imageConfig": {"aspectRatio": _size_to_aspect(size)},
+        },
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{GEMINI_API_BASE}/models/{model}:generateContent",
+        data=payload,
+        headers={
+            "x-goog-api-key": api_key,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        code = e.code
+        msg = _format_gemini_error(e)  # consumes the body
+        # 429 (quota/rate limit) and 5xx are worth a fallback to another provider.
+        if code == 429 or 500 <= code < 600:
+            raise ProviderUnavailable(msg) from e
+        raise ImageGenError(msg) from e
+    except urllib.error.URLError as e:
+        raise ProviderUnavailable(f"Network error reaching Gemini: {e.reason}") from e
+
+    # A blocked prompt comes back with no usable candidate — surface why.
+    candidates = body.get("candidates") or []
+    if not candidates:
+        block = (body.get("promptFeedback") or {}).get("blockReason")
+        if block:
+            raise ImageGenError(
+                f"Gemini blocked the prompt ({block}). Revise the prompt and retry.")
+        raise ImageGenError("Gemini returned no image (empty response).")
+
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    for part in parts:
+        inline = part.get("inlineData") or part.get("inline_data")
+        if inline and inline.get("data"):
+            try:
+                return base64.b64decode(inline["data"])
+            except ValueError as e:
+                raise ImageGenError("Gemini returned malformed image data.") from e
+
+    finish = candidates[0].get("finishReason")
+    if finish and finish != "STOP":
+        raise ImageGenError(f"Gemini produced no image (finishReason={finish}).")
+    raise ImageGenError("Gemini response contained no image data.")
+
+
+def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALITY,
+                   size: str = DEFAULT_SIZE, model: str | None = None,
+                   characters=None) -> dict:
+    """Generate one image and save it under the active campaign's images/ dir.
+
+    The provider (Gemini or OpenAI) is chosen by ``active_provider()``. ``model``
+    defaults to that provider's image model when left as None.
+
+    ``characters`` is an optional list of character names in frame; each one's
+    canonical visual_appearance block is auto-injected into the prompt so the PC
+    and NPCs render CONSISTENTLY image-to-image, even on direct/fallback calls.
+
+    Returns {path, rel_path, cost, model, provider, quality, size, title}. Raises
+    ImageGenError for actionable problems (no campaign, no key, moderation).
+    """
+    provider = active_provider()
+    if not provider:
+        raise ImageGenError(
+            "No image API key set. Add GEMINI_API_KEY (free tier — "
+            "aistudio.google.com/apikey) or OPENAI_API_KEY to .env to enable images.")
+
+    if provider == "gemini":
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        model = model or GEMINI_MODEL
+    else:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        model = model or DEFAULT_MODEL
+
+    campaign_dir = resolve_campaign_dir()
+    if campaign_dir is None:
+        raise ImageGenError("No active campaign. Run /new-game or /import first.")
+
+    if not prompt or not prompt.strip():
+        raise ImageGenError("Empty prompt — describe the scene to illustrate.")
+
+    final_prompt = prompt
+
+    # Auto-inject each named character's canonical look so the PC/NPCs render
+    # consistently every time. Skipped if the caller already spelled it out.
+    for cname in (characters or []):
+        line = appearance_line(cname, campaign_dir)
+        if line and cname.strip().lower() not in prompt.lower():
+            final_prompt = f"{final_prompt.rstrip()}\n\nCharacter (render exactly): {line}"
+
+    # Lock the campaign's art-style signature into every prompt so the gallery
+    # reads like one artbook even if the caller forgets to restate the style.
+    chronicler = load_chronicler(campaign_dir)
+    style = (chronicler or {}).get("style", "").strip()
+    if style and style.lower() not in final_prompt.lower():
+        final_prompt = f"{final_prompt.rstrip()}\n\nConsistent art style (campaign signature): {style}."
+
+    if provider == "gemini":
+        try:
+            image_bytes = _generate_gemini_bytes(final_prompt, size=size, model=model,
+                                                 api_key=api_key)
+            cost = GEMINI_COST
+        except ProviderUnavailable as e:
+            # Gemini hit its limit (free tier = 0 image quota, or a real rate
+            # limit). Fall back to OpenAI if a key is available so images still
+            # render; otherwise surface the original error.
+            oa_key = os.environ.get("OPENAI_API_KEY")
+            if not oa_key:
+                raise
+            sys.stderr.write(f"[INFO] Gemini unavailable ({e}). Falling back to OpenAI.\n")
+            provider = "openai"
+            model = DEFAULT_MODEL
+            image_bytes = _generate_openai_bytes(final_prompt, quality=quality, size=size,
+                                                 model=model, api_key=oa_key)
+            cost = estimate_cost(quality, size)
+    else:
+        image_bytes = _generate_openai_bytes(final_prompt, quality=quality, size=size,
+                                             model=model, api_key=api_key)
+        cost = estimate_cost(quality, size)
 
     images_dir = Path(campaign_dir) / "images"
     out_path = _next_path(images_dir, title)
     out_path.write_bytes(image_bytes)
 
-    cost = estimate_cost(quality, size)
     record = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "file": out_path.name,
         "title": title,
+        "provider": provider,
         "model": model,
         "quality": quality,
         "size": size,
@@ -296,8 +459,64 @@ def generate_image(prompt: str, *, title: str = "", quality: str = DEFAULT_QUALI
         "short_path": str(short) if short else str(out_path),
         "cost": cost,
         "model": model,
+        "provider": provider,
         "quality": quality,
         "size": size,
+        "title": title,
+    }
+
+
+def import_image(src_path: str, *, title: str = "", campaign_dir=None) -> dict:
+    """Copy an externally-made image into the campaign gallery (cost $0).
+
+    For pictures generated by hand elsewhere — e.g. Nano Banana in the Gemini
+    app via a Pro subscription — so they slot into the same sequenced gallery,
+    shortlink, and spend log as generated ones. Returns the same dict shape as
+    generate_image (provider='import', cost 0).
+    """
+    campaign_dir = campaign_dir or resolve_campaign_dir()
+    if campaign_dir is None:
+        raise ImageGenError("No active campaign. Run /new-game or /import first.")
+
+    src = Path(src_path).expanduser()
+    if not src.exists() or not src.is_file():
+        raise ImageGenError(f"File not found: {src_path}")
+
+    data = src.read_bytes()
+    ext = _detect_image_ext(data)
+    if not ext:
+        raise ImageGenError(
+            f"'{src.name}' is not a recognized image (expected PNG, JPG, WEBP, or GIF).")
+
+    images_dir = Path(campaign_dir) / "images"
+    out_path = _next_path(images_dir, title or src.stem, ext=ext)
+    out_path.write_bytes(data)
+
+    chronicler = load_chronicler(campaign_dir)
+    record = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "file": out_path.name,
+        "title": title,
+        "provider": "import",
+        "model": "imported",
+        "quality": "-",
+        "size": "-",
+        "est_cost_usd": 0.0,
+        "chronicler": (chronicler or {}).get("name"),
+        "source": str(src),
+    }
+    _log_generation(images_dir, record)
+
+    short = _short_link(out_path, campaign_dir)
+    return {
+        "path": str(out_path),
+        "rel_path": os.path.relpath(out_path, Path.cwd()),
+        "short_path": str(short) if short else str(out_path),
+        "cost": 0.0,
+        "model": "imported",
+        "provider": "import",
+        "quality": "-",
+        "size": "-",
         "title": title,
     }
 
@@ -320,14 +539,38 @@ def _format_http_error(e: "urllib.error.HTTPError") -> str:
     return f"OpenAI error {e.code}: {msg or 'request failed'}"
 
 
+def _format_gemini_error(e: "urllib.error.HTTPError") -> str:
+    """Turn a Gemini HTTP error into an actionable one-line message."""
+    try:
+        err = json.loads(e.read().decode("utf-8")).get("error", {})
+    except Exception:
+        err = {}
+    msg = err.get("message", "")
+    if e.code == 400 and ("API key not valid" in msg or "API_KEY_INVALID" in str(err)):
+        return "Gemini rejected the API key (400). Check GEMINI_API_KEY in .env."
+    if e.code in (401, 403):
+        return ("Gemini denied access (%d). Check GEMINI_API_KEY and that the "
+                "Generative Language API is enabled for it." % e.code)
+    if e.code == 429:
+        return ("Gemini rate limit / free-tier quota hit (429). Wait and retry "
+                "(free tier is rate-limited per minute/day).")
+    if e.code == 404:
+        return (f"Gemini model not found (404): {GEMINI_MODEL}. Set GEMINI_IMAGE_MODEL "
+                "to an available image model.")
+    return f"Gemini error {e.code}: {msg or 'request failed'}"
+
+
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate a scene image with gpt-image-2")
+    parser = argparse.ArgumentParser(
+        description="Generate a scene image (Gemini gemini-2.5-flash-image or OpenAI gpt-image-2)")
     parser.add_argument("--prompt", help="Scene description (or read from stdin if omitted)")
     parser.add_argument("--title", default="", help="Scene title (used in filename + canvas)")
     parser.add_argument("--character", action="append", default=[], metavar="NAME",
                         help="Character in frame; auto-injects their visual_appearance. Repeatable.")
+    parser.add_argument("--import-file", metavar="PATH",
+                        help="Copy an existing image file into the campaign gallery (cost $0) and exit")
     parser.add_argument("--appearance", metavar="NAME",
                         help="Print one character's visual_appearance bible line and exit")
     parser.add_argument("--quality", default=DEFAULT_QUALITY, choices=["low", "medium", "high", "auto"])
@@ -341,6 +584,15 @@ def main() -> None:
     parser.add_argument("--style", help="Locked art-style signature (with --set-chronicler)")
     parser.add_argument("--persona", help="Chronicler persona/voice (with --set-chronicler)")
     args = parser.parse_args()
+
+    if args.import_file is not None:
+        try:
+            result = import_image(args.import_file, title=args.title)
+        except ImageGenError as e:
+            print(f"[ERROR] {e}", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(result) if args.json else result["path"])
+        return
 
     if args.appearance is not None:
         line = appearance_line(args.appearance)

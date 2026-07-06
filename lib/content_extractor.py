@@ -17,6 +17,16 @@ class PDFExtractor:
         """Initialize PDF extractor."""
         self.pypdf_available = False
         self.pdfplumber_available = False
+        self.fitz_available = False
+
+        # PyMuPDF (fitz) first: its MuPDF engine is the most tolerant of malformed
+        # PDFs (broken xref/octal, odd page trees) that make pdfminer/PyPDF2 fail.
+        try:
+            import fitz
+            self.fitz_available = True
+            self.fitz = fitz
+        except ImportError:
+            pass
 
         try:
             import PyPDF2
@@ -32,8 +42,8 @@ class PDFExtractor:
         except ImportError:
             pass
 
-        if not self.pypdf_available and not self.pdfplumber_available:
-            print("Warning: No PDF libraries available. Install PyPDF2 or pdfplumber.")
+        if not any((self.fitz_available, self.pypdf_available, self.pdfplumber_available)):
+            print("Warning: No PDF libraries available. Install pymupdf, PyPDF2, or pdfplumber.")
 
     def extract(self, filepath: str) -> str:
         """
@@ -48,23 +58,91 @@ class PDFExtractor:
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"PDF file not found: {filepath}")
 
-        # Try pdfplumber first (better for complex layouts)
+        errors = []
+
+        # Try PyMuPDF (fitz) first — most tolerant of malformed PDFs.
+        if self.fitz_available:
+            try:
+                text = self._extract_with_fitz(filepath)
+                if text and text.strip():
+                    return text
+                errors.append("fitz: no extractable text (likely a scanned/image-only PDF)")
+            except Exception as e:
+                errors.append(f"fitz: {e}")
+
+        # Then pdfplumber (better for complex layouts on well-formed PDFs).
         if self.pdfplumber_available:
             try:
-                return self._extract_with_pdfplumber(filepath)
+                text = self._extract_with_pdfplumber(filepath)
+                if text and text.strip():
+                    return text
+                errors.append("pdfplumber: no extractable text")
             except Exception as e:
-                print(f"pdfplumber extraction failed: {e}")
-                if self.pypdf_available:
-                    print("Falling back to PyPDF2...")
+                errors.append(f"pdfplumber: {e}")
 
-        # Fall back to PyPDF2
+        # Finally PyPDF2.
         if self.pypdf_available:
             try:
-                return self._extract_with_pypdf2(filepath)
+                text = self._extract_with_pypdf2(filepath)
+                if text and text.strip():
+                    return text
+                errors.append("PyPDF2: no extractable text")
             except Exception as e:
-                print(f"PyPDF2 extraction failed: {e}")
+                errors.append(f"PyPDF2: {e}")
 
-        raise RuntimeError("No PDF extraction library available. Install PyPDF2 or pdfplumber.")
+        # Last resort: no embedded text layer (a scanned/image-only PDF). Try OCR.
+        text = self._ocr_extract(filepath)
+        if text and text.strip():
+            return text
+
+        raise RuntimeError(
+            "PDF text extraction failed. This is a scanned/image-only PDF and OCR was "
+            "unavailable or failed. Install ocrmypdf (+ tesseract), or provide a .txt. "
+            "Tried: " + "; ".join(errors or ["no PDF library available"]))
+
+    def _ocr_extract(self, filepath: str) -> str:
+        """OCR a scanned/image-only PDF via ocrmypdf, returning the recognized text.
+
+        Requires the `ocrmypdf` CLI (which needs Tesseract). Slow — rasterizes and
+        recognizes every page — so it only runs after every text-layer extractor
+        has come back empty. Uses ocrmypdf's --sidecar to capture the plain text.
+        """
+        import shutil
+        import subprocess
+        import tempfile
+        if not shutil.which("ocrmypdf"):
+            return ""
+        print("  No text layer found — running OCR via ocrmypdf "
+              "(this can take several minutes for a large scan)...")
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                sidecar = os.path.join(td, "ocr.txt")
+                out_pdf = os.path.join(td, "ocr.pdf")
+                subprocess.run(
+                    ["ocrmypdf", "--force-ocr", "--sidecar", sidecar,
+                     filepath, out_pdf],
+                    check=True, capture_output=True, timeout=3600)
+                with open(sidecar, encoding="utf-8", errors="ignore") as fh:
+                    return fh.read()
+        except Exception as e:
+            print(f"  OCR failed: {e}")
+            return ""
+
+    def _extract_with_fitz(self, filepath: str) -> str:
+        """Extract text using PyMuPDF (fitz)."""
+        text = []
+        doc = self.fitz.open(filepath)
+        try:
+            for page in doc:
+                try:
+                    page_text = page.get_text()
+                    if page_text:
+                        text.append(page_text)
+                except Exception:
+                    continue
+        finally:
+            doc.close()
+        return "\n".join(text)
 
     def _extract_with_pdfplumber(self, filepath: str) -> str:
         """Extract text using pdfplumber."""

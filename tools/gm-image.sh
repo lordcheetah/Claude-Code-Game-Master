@@ -1,5 +1,5 @@
 #!/bin/bash
-# gm-image.sh - Generate a scene illustration with gpt-image-2 (image_gen.py)
+# gm-image.sh - Generate a scene illustration (Gemini or OpenAI, via image_gen.py)
 #
 # The GM calls this at high-impact beats (new location, boss reveal, big loot) to
 # show the player a real image. The PNG is saved into the active campaign's
@@ -9,6 +9,7 @@
 #
 #   gm-image.sh generate --prompt "..." [--title "..."] [--quality low|medium|high]
 #                        [--size 1536x1024]
+#   gm-image.sh import <file> [--title "..."]  # add an existing image (free)
 #   gm-image.sh log                     # show this campaign's generation/spend log
 
 source "$(dirname "$0")/common.sh"
@@ -17,11 +18,13 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: gm-image.sh <action> [args]"
     echo ""
     echo "Actions:"
-    echo "  generate --prompt <text>   - Generate + save a scene image (gpt-image-2)"
+    echo "  generate --prompt <text>   - Generate + save a scene image (Gemini or gpt-image-2)"
     echo "      --title <text>           Scene title (used in the filename)"
     echo "      --quality low|medium|high  Default: medium (~\$0.04 landscape)"
     echo "      --size 1536x1024           Default: 1536x1024 (cinematic landscape)"
     echo "      --character <name>         Auto-inject that character's visual_appearance (repeatable)"
+    echo "  import <file>              - Add an existing image (e.g. Nano Banana from the Gemini app) to the gallery, free"
+    echo "      --title <text>           Scene title (used in the filename)"
     echo "  appearance <name>          - Print a character's visual_appearance bible line (PC or NPC)"
     echo "  chronicler                 - Show this campaign's in-world chronicler"
     echo "      --name <text>            Set the chronicler's name"
@@ -60,8 +63,9 @@ case "$ACTION" in
             exit 1
         fi
 
-        if ! check_env OPENAI_API_KEY; then
-            error "OPENAI_API_KEY not set. Add it to .env (OPENAI_API_KEY=sk-...) to enable images."
+        # Images work with either provider: Gemini (free tier) or OpenAI.
+        if [ -z "$GEMINI_API_KEY" ] && [ -z "$GOOGLE_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
+            error "No image API key set. Add GEMINI_API_KEY (free — https://aistudio.google.com/apikey) or OPENAI_API_KEY to .env to enable images."
             exit 1
         fi
 
@@ -77,14 +81,50 @@ case "$ACTION" in
         IMG_PATH=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; print(json.load(sys.stdin)['path'])")
         SHORT_PATH=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; d=json.load(sys.stdin); print(d.get('short_path') or d['path'])")
         COST=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; c=json.load(sys.stdin)['cost']; print('%.3f'%c if c is not None else '?')")
+        PROVIDER=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; print(json.load(sys.stdin).get('provider','?'))")
 
-        log_token_usage "gm-image.generate" "quality=$QUALITY" "size=$SIZE" "est_cost_usd=$COST"
+        log_token_usage "gm-image.generate" "provider=$PROVIDER" "quality=$QUALITY" "size=$SIZE" "est_cost_usd=$COST"
 
         # Short symlink so the file:// link stays on one line and stays clickable
         # (the deep campaign path wraps in the terminal, which breaks the click target).
         success "Image generated: ${TITLE:-untitled}"
         echo "  open: file://$SHORT_PATH"
-        echo "  est cost: \$$COST ($QUALITY $SIZE)"
+        echo "  via: $PROVIDER · est cost: \$$COST ($QUALITY $SIZE)"
+        ;;
+
+    import)
+        require_active_campaign
+
+        # Copy an externally-made image (e.g. Nano Banana from the Gemini app via
+        # a Pro subscription) into the campaign gallery — free, same gallery/log.
+        FILE="" ; TITLE=""
+        while [ "$#" -gt 0 ]; do
+            case "$1" in
+                --title) TITLE="$2" ; shift 2 ;;
+                --*)     error "Unknown flag: $1" ; exit 1 ;;
+                *)       FILE="$1"  ; shift ;;
+            esac
+        done
+
+        if [ -z "$FILE" ]; then
+            error "Usage: gm-image.sh import <file> [--title \"...\"]"
+            exit 1
+        fi
+
+        RESULT=$($PYTHON_CMD "$LIB_DIR/image_gen.py" \
+            --import-file "$FILE" --title "$TITLE" --json)
+        STATUS=$?
+        if [ "$STATUS" -ne 0 ]; then
+            exit "$STATUS"  # image_gen.py already printed the actionable error
+        fi
+
+        SHORT_PATH=$(echo "$RESULT" | $PYTHON_CMD -c "import sys,json; d=json.load(sys.stdin); print(d.get('short_path') or d['path'])")
+
+        log_token_usage "gm-image.import" "provider=import" "est_cost_usd=0"
+
+        success "Image imported: ${TITLE:-untitled}"
+        echo "  open: file://$SHORT_PATH"
+        echo "  via: import · est cost: \$0.000 (free)"
         ;;
 
     chronicler)
@@ -149,7 +189,7 @@ PY
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: generate, chronicler, appearance, log"
+        echo "Valid actions: generate, import, chronicler, appearance, log"
         exit 1
         ;;
 esac

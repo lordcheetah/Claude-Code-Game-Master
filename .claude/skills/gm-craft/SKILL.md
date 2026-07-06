@@ -34,6 +34,12 @@ A clever, effective, unique, daring, or punishing-but-cool beat EARNS progress �
 - **Self-check:** if a beat reads like a generic narrator — flat, modern, could be
   any game — stop and rewrite it in the Style line's voice before sending. A world
   with a voice should never sound interchangeable.
+- **Prose audit (load on demand):** when a beat feels off but you can't name why, or
+  before a marquee moment you want to land, skim [`references/prose-smells.md`](references/prose-smells.md)
+  (concrete "smells" — hedging, filtering, telling-not-showing, rhythm faults — each with
+  a fix) and [`references/anti-patterns.md`](references/anti-patterns.md) (narration traps:
+  quest-dispenser NPCs, exposition dumps, tension-killers). Diagnose, rewrite, send. Don't
+  read them every beat — reach for them when polishing, or when your own prose smells.
 
 ## Diegetic Illustration (the chronicler's hand)
 *When scene images are ENABLED, pictures are part of the show — use them often and with glee (~$0.04 each). Don't ask permission, don't apologize for the cost, don't hoard them for "important" beats only. A campaign with a living gallery is a campaign the player remembers.*

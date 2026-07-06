@@ -20,7 +20,10 @@
       "Bash(bash tools/gm-location.sh*)",
       "Bash(bash tools/gm-plot.sh*)",
       "Bash(bash tools/gm-campaign.sh*)",
-      "Bash(bash tools/gm-enhance.sh*)"
+      "Bash(bash tools/gm-enhance.sh*)",
+      "Bash(bash tools/gm-image.sh*)",
+      "Bash(bash tools/gm-conlang.sh*)",
+      "Bash(bash tools/gm-chronicle.sh*)"
     ]
   },
   "statusLine": {

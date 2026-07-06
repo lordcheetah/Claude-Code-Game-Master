@@ -48,7 +48,7 @@ Every turn runs the same loop: **gather context → decide → execute → persi
 
 - **Real stakes.** The character can die. Telegraphed, earned, never by GM fiat — but death is a valid forward outcome, and when it lands the harness runs a hand-off so the show goes on (take over a party member, roll a newcomer, step in as a canon figure). The world remembers the fallen.
 
-- **An illustrated campaign, drawn in-world.** *If* you drop an `OPENAI_API_KEY` into `.env`, the GM is encouraged to illustrate big beats — a new location, a boss reveal, a haunting vista, your styled flourish — with real generated images, presented diegetically as the work of an **in-world chronicler**: a named artist with a locked art style and persona, both designed at world-creation time to fit your plot and tone. The same hand "draws" every image across the campaign, so your gallery reads like one artist's sketchbook of your story. No key, no problem — the GM just keeps narrating in text and never mentions images.
+- **An illustrated campaign, drawn in-world.** *If* you drop a `GEMINI_API_KEY` (free tier) or `OPENAI_API_KEY` into `.env`, the GM is encouraged to illustrate big beats — a new location, a boss reveal, a haunting vista, your styled flourish — with real generated images, presented diegetically as the work of an **in-world chronicler**: a named artist with a locked art style and persona, both designed at world-creation time to fit your plot and tone. The same hand "draws" every image across the campaign, so your gallery reads like one artist's sketchbook of your story. No key, no problem — the GM just keeps narrating in text and never mentions images.
 
 ---
 
@@ -217,7 +217,7 @@ The harness is plumbing you can poke at: bash wrappers (`tools/`) → Python man
 | `gm-enhance.sh` | RAG-powered entity enrichment |
 | `gm-extract.sh` | Document import and extraction pipeline |
 | `gm-overview.sh` | Quick world-state summary |
-| `gm-image.sh` | Generate a scene image with gpt-image-2 and print a clickable link |
+| `gm-image.sh` | Generate a scene image (Gemini or gpt-image-2) and print a clickable link |
 | `gm-reset.sh` | Reset campaign data |
 
 ### Scene Images
@@ -229,7 +229,24 @@ bash tools/gm-image.sh generate --title "The Sunken Crypt" \
   --prompt "A flooded stone crypt lit by green torchlight, dark fantasy, cinematic"
 ```
 
-It calls OpenAI's `gpt-image-2`, saves the PNG into the campaign's `images/` folder, and prints a clickable `file://` link you open to view it (the VS Code terminal linkifies the path). Every generation is logged with an estimated cost — run `gm-image.sh log` for the running total. Requires `OPENAI_API_KEY` in `.env`; without it the GM just keeps narrating in text. Use `--quality low` for quick drafts, `high` for marquee moments.
+It saves the PNG into the campaign's `images/` folder and prints a clickable `file://` link you open to view it (the VS Code terminal linkifies the path). Every generation is logged with an estimated cost — run `gm-image.sh log` for the running total. Use `--quality low` for quick drafts, `high` for marquee moments (OpenAI only).
+
+**Two providers, picked automatically:**
+
+- **Gemini (free)** — set `GEMINI_API_KEY=...` in `.env` (get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Uses `gemini-2.5-flash-image` (Nano Banana), which is **free on the Gemini API free tier** (rate-limited). This is preferred when its key is present.
+- **OpenAI** — set `OPENAI_API_KEY=...`. Uses `gpt-image-2` (~$0.04/image).
+
+If both keys are set, Gemini wins; force a choice with `GM_IMAGE_PROVIDER=gemini|openai`. With neither key, the GM just keeps narrating in text.
+
+> **Note on Gemini's free tier:** image generation is **not** included in the Gemini API free tier (it reports `limit: 0`), so a free key alone won't draw — you need billing enabled, after which it's ~$0.039/image. To cover this, image generation **automatically falls back to OpenAI** when Gemini hits a 429/quota error, so `GM_IMAGE_PROVIDER=gemini` keeps working via OpenAI until you enable Gemini billing.
+
+**Bring your own image (free):** if you generate art elsewhere — e.g. Nano Banana in the Gemini app with a Gemini Pro subscription — drop it straight into the campaign gallery at no cost:
+
+```bash
+bash tools/gm-image.sh import path/to/picture.png --title "The Sunken Crypt"
+```
+
+It's sequenced, shortlinked, and logged exactly like a generated image (PNG/JPG/WEBP/GIF accepted).
 
 ### The D&D 5e API, when it fits
 

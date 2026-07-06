@@ -46,7 +46,7 @@ Display all available commands and tools.
   gm-enhance.sh     Enrich entities with RAG
   gm-overview.sh    Quick world summary
   gm-campaign.sh    Switch between campaigns
-  gm-image.sh       Generate a scene image (gpt-image-2) + clickable link
+  gm-image.sh       Generate a scene image (Gemini/gpt-image-2) + clickable link
 
 ================================================================
 
@@ -65,7 +65,11 @@ Display all available commands and tools.
     bash tools/gm-image.sh generate --title "..." --prompt "..."
   The locked --style is auto-added to every prompt so the gallery
   reads like one artbook. Saves a PNG + prints a clickable file://
-  link. Needs OPENAI_API_KEY in .env; gm-image.sh log shows spend.
+  link. Needs GEMINI_API_KEY or OPENAI_API_KEY in .env (Gemini image
+  gen needs billing; it auto-falls-back to OpenAI on quota). Made art
+  elsewhere (e.g. Nano Banana in the Gemini app)? Add it free:
+    bash tools/gm-image.sh import path/to/pic.png --title "..."
+  gm-image.sh log shows spend.
 
 ================================================================
 ```

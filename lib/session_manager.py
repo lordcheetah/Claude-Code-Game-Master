@@ -434,10 +434,19 @@ class SessionManager(EntityManager):
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
 
-        # --- Scene images (gpt-image-2): only available when a key is configured ---
-        if os.environ.get("OPENAI_API_KEY"):
+        # --- Scene images (Gemini or gpt-image-2): only when a key is configured ---
+        _use_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+        _forced = os.environ.get("GM_IMAGE_PROVIDER", "").strip().lower()
+        if _forced == "openai":
+            _use_gemini = False
+        elif _forced == "gemini":
+            _use_gemini = True
+        if (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+                or os.environ.get("OPENAI_API_KEY")):
+            _cost_hint = ("free on Gemini's free tier" if _use_gemini
+                          else "images cost ~$0.04")
             lines.append("Scene images: ENABLED — illustrate GENEROUSLY and with glee "
-                         "(images cost ~$0.04; lean toward YES). New location, monster/boss "
+                         f"({_cost_hint}; lean toward YES). New location, monster/boss "
                          "reveal, big loot, a styled flourish, a funny beat, a quiet vista — "
                          "any beat with a real visual or emotional charge earns one. Present "
                          "it DIEGETICALLY: frame the picture as an artifact made by an in-world "
@@ -462,9 +471,13 @@ class SessionManager(EntityManager):
                 lines.append("  Chronicler: none yet — name one the first time you "
                              "illustrate and persist it with `bash tools/gm-image.sh "
                              "chronicler --name \"...\" --style \"...\" --persona \"...\"`.")
+            lines.append("  If the player hands you an image they made elsewhere (e.g. "
+                         "Nano Banana in the Gemini app), add it to the gallery for free "
+                         "with `bash tools/gm-image.sh import <file> --title \"...\"`, then "
+                         "present it diegetically like any other.")
         else:
-            lines.append("Scene images: DISABLED (no OPENAI_API_KEY) — do NOT call gm-image.sh "
-                         "and do NOT mention images; narrate in text only.")
+            lines.append("Scene images: DISABLED (no GEMINI_API_KEY or OPENAI_API_KEY) — do NOT "
+                         "call gm-image.sh and do NOT mention images; narrate in text only.")
 
         # --- Narrative Voice (write the prose in the world's authorial voice) ---
         bible = self.json_ops.load_json("world-bible.json") or {}

@@ -106,7 +106,8 @@ All tools take `--json` for structured returns. **Always prefix with `bash tools
 ## Specialist agents (spawn proactively, invisibly)
 monster-manual + rules-master (book-first, kit-aware; dnd5eapi only for the
 dnd5e kit), spell-caster, gear-master, loot-dropper, npc-builder, world-builder,
-dungeon-architect, create-character, scene-illustrator (image gen — spawn IN THE BACKGROUND).
+dungeon-architect, create-character, scene-illustrator (image gen — spawn IN THE BACKGROUND),
+sourcebook-author (compiles a world into a table-ready TTRPG sourcebook EPUB — spawn when the player wants a rulebook/boxed set to run old-school).
 
 ## Output Format
 - HP: healthy `████████░░░░ 18/24 ✓` · wounded `█████░░░░░░░ 10/24 ⚠` · critical `██░░░░░░░░░░ 5/24 ⚠⚠`.
@@ -126,6 +127,7 @@ only for operational lessons that fit nowhere else.
 ## Technical Notes
 - **Python:** always `uv run python` (never bare `python`/`python3`).
 - **Chronicle / ebook:** `bash tools/gm-chronicle.sh [campaign]` compiles a played campaign (session-log summaries + the chronicler's image plates + character dossier + NPC roster) into an illustrated **EPUB** via pandoc. Flags: `--cover N` (Nth plate as cover), `--no-appendix`, `--md-only`. Deterministic — it arranges recorded material, it doesn't invent prose.
+- **Sourcebook / boxed set:** `bash tools/gm-sourcebook.sh [campaign]` compiles a world's REFERENCE material into a table-ready TTRPG **sourcebook EPUB** — the inverse of the chronicle. It arranges the World Kit (rendered as readable rules), the bible (setting/factions/history), the NPC roster + stat blocks, a gazetteer with travel tables, treasury, adventure hooks, tongues, and art plates. Deterministic core; the **`sourcebook-author` agent** enriches it via a `sourcebook-prose.json` companion (rules taught in plain language, GM guidance, gap-filled stat blocks, pregens, random tables, a starter adventure) — auto-picked-up from the campaign dir. Flags: `--prose FILE`, `--cover N`, `--no-adventure`, `--md-only`. Spawn `sourcebook-author` when the player wants a rulebook/boxed set to run the game old-school at a physical table.
 - **Conlang / languages:** `bash tools/gm-conlang.sh generate "<culture>"` mints a whole constructed language (phonology, morphology, syntax, glossed lexicon, numerals, writing system) **deterministically from the culture's name** — the same name always yields the same tongue — and saves a small per-campaign profile to `languages/<slug>.json` (a seed + cached samples). Then `name "<culture>" [--count N]` for on-the-fly NPC/place names, `word "<culture>" "<english>"` to translate one gloss (coins a new word if absent), `phrase "<culture>"` for sample sentences, `list` to see saved tongues. Use it to keep a faction's names, script, and utterances consistent across a campaign (Deep Ones, an elven house, an eldritch cult…). Offline, zero-dependency (vendored engine in `lib/conlang/`).
 - **Saves:** JSON snapshots in each campaign's `saves/`.
 - **Multi-campaign:** tools read `world-state/active-campaign.txt`.

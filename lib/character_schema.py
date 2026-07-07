@@ -34,6 +34,36 @@ _DETAIL_KEYS = ('saves', 'skills', 'features', 'notes', 'id', 'current_location'
 _REQUIRED = ('identity', 'vitals', 'attributes', 'progression', 'inventory', 'conditions')
 
 
+def hp_current_max(char: Dict[str, Any]) -> Tuple[int, int]:
+    """Read (current, max) HP tolerating BOTH shapes that exist across kits:
+    a scalar `hp` (with `max_hp`/`hp_max` alongside) or a `{'current','max'}` dict.
+    Returns a pair of ints; unreadable values become 0."""
+    raw = char.get('hp', 0) if isinstance(char, dict) else 0
+    if isinstance(raw, dict):
+        cur = raw.get('current', 0) or 0
+        mx = raw.get('max', 0) or 0
+    else:
+        cur = raw or 0
+        mx = char.get('max_hp') or char.get('hp_max') or cur
+    try:
+        return int(cur), int(mx)
+    except (TypeError, ValueError):
+        return 0, 0
+
+
+def set_hp_current(char: Dict[str, Any], new_current: int) -> Dict[str, Any]:
+    """Write current HP back in whatever shape the character already uses, keeping
+    common mirror fields coherent. Complements hp_current_max()."""
+    raw = char.get('hp', 0)
+    if isinstance(raw, dict):
+        char.setdefault('hp', {})['current'] = new_current
+    else:
+        char['hp'] = new_current
+        if 'current_hp' in char:
+            char['current_hp'] = new_current
+    return char
+
+
 def is_open_schema(char: Any) -> bool:
     return isinstance(char, dict) and all(k in char for k in ('identity', 'vitals', 'attributes'))
 

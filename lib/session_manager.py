@@ -14,16 +14,18 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from character_schema import to_flat
+from character_schema import to_flat, hp_current_max
 
 
 class SessionManager(EntityManager):
     """Manage D&D session operations. Inherits from EntityManager for common functionality."""
 
     # Per-campaign play-style defaults. `action_menu` controls whether the GM ends
-    # each beat with 3 numbered choices (on) or an open prompt (off). Stored
+    # each beat with 3 numbered choices (on) or an open prompt (off). `multiplayer`
+    # opts a campaign into multi-PC play (several human players as peers, seat state
+    # under players/<slug>/); OFF by default so single-player is unchanged. Stored
     # under overview.preferences; surfaced in get_full_context so the GM honors it.
-    DEFAULT_PREFERENCES = {"action_menu": True}
+    DEFAULT_PREFERENCES = {"action_menu": True, "multiplayer": False}
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
@@ -434,6 +436,23 @@ class SessionManager(EntityManager):
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
 
+        # --- Multiplayer (multi-PC table): only when the campaign opts in ---
+        if self.get_preferences().get("multiplayer", False):
+            lines.append("Multiplayer: ON — several human players share this table as peers. "
+                         "LOAD THE gm-multiplayer SKILL and run it: attribute each action to "
+                         "the player who took it, give every PC spotlight, and on a PC's death "
+                         "retire only that seat (never the single-PC `become` swap).")
+            try:
+                from party_manager import PartyManager
+                block = PartyManager(str(self.campaign_dir)).get_party_block()
+                if block:
+                    lines.append("")
+                    lines.append(block)
+            except Exception:
+                pass
+        else:
+            lines.append("Multiplayer: OFF (single-player). (Enable: gm-session.sh multiplayer on)")
+
         # --- Scene images (Gemini or gpt-image-2): only when a key is configured ---
         _use_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
         _forced = os.environ.get("GM_IMAGE_PROVIDER", "").strip().lower()
@@ -553,9 +572,7 @@ class SessionManager(EntityManager):
             level = char.get('level', 1)
             race = char.get('race', '?')
             cls = char.get('class', '?')
-            hp = char.get('hp', {})
-            hp_cur = hp.get('current', 0)
-            hp_max = hp.get('max', 0)
+            hp_cur, hp_max = hp_current_max(char)
             ac = char.get('ac', '?')
             xp = char.get('xp', {})
             if isinstance(xp, dict):
@@ -982,6 +999,11 @@ def main():
                                 choices=['on', 'off', 'toggle', 'show'],
                                 help='on | off | toggle | show (default: show)')
 
+    mp_parser = subparsers.add_parser('multiplayer', help='Toggle multi-PC (multiplayer) mode')
+    mp_parser.add_argument('value', nargs='?', default='show',
+                           choices=['on', 'off', 'toggle', 'show'],
+                           help='on | off | toggle | show (default: show)')
+
     from cli_output import wants_json, strip_json_flag, emit
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -1061,6 +1083,20 @@ def main():
         else:
             print(f"Action menu turned {state}. "
                   f"{'Beats will end with 3 numbered choices.' if current else 'Beats will end with an open prompt.'}")
+
+    elif args.action == 'multiplayer':
+        val = getattr(args, 'value', 'show')
+        current = manager.get_preferences().get('multiplayer', False)
+        if val != 'show':
+            new = (not current) if val == 'toggle' else (val == 'on')
+            manager.set_preference('multiplayer', new)
+            current = new
+        state = 'on' if current else 'off'
+        if val == 'show':
+            print(f"Multiplayer is {state}.")
+        else:
+            print(f"Multiplayer turned {state}. "
+                  f"{'Several human PCs share this table; manage seats with gm-party.sh.' if current else 'Back to single-player; the campaign character.json is the active PC.'}")
 
 
 if __name__ == "__main__":

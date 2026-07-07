@@ -7,6 +7,20 @@ source "$(dirname "$0")/common.sh"
 
 require_active_campaign
 
+# Multiplayer seat routing (additive): a global `--player <name>` anywhere in the
+# args points every subcommand at that seat's sheet (players/<slug>/character.json).
+# Extract it once, export GM_PLAYER (player_manager.py reads it), and strip from
+# the positional args so no per-subcommand parsing changes. Absent → single-player.
+ARGS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --player) export GM_PLAYER="$2"; shift 2 ;;
+        --player=*) export GM_PLAYER="${1#--player=}"; shift ;;
+        *) ARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${ARGS[@]}"
+
 ACTION=$1
 shift
 

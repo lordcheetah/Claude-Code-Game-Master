@@ -1,0 +1,86 @@
+---
+name: gm-multiplayer
+description: Running a multi-PC table — several human players as peers at one shared session. Load when scene context reports "Multiplayer: ON". Covers seat/roster management, per-player action attribution, spotlight rotation, group-vs-split scenes, multi-PC initiative, and the non-destructive death hand-off (retire one seat, others play on). Kit-agnostic; layers on top of the normal core loop.
+---
+
+# Running a Multiplayer Table
+
+Several humans share ONE game session as PEERS. The core loop is unchanged
+(CONTEXT → DECIDE → EXECUTE → PERSIST → NARRATE); this skill is the etiquette and
+plumbing for more than one player character. Load it whenever scene context says
+`Multiplayer: ON`. It is additive — none of it fires in single-player.
+
+## The players and their seats
+- Each human owns a **seat**: their own character sheet at
+  `players/<slug>/character.json`, tracked in `players.json`. The campaign-root
+  `character.json` is NOT the party in multiplayer — the seats are.
+- Scene context prints **THE PARTY** block: `player → character`, HP, level,
+  conditions, and a `★` on the current **spotlight** seat. Read it every beat.
+- Manage seats with `bash tools/gm-party.sh`:
+  - `add "<player>" --sheet '<json>'` — add a seat (seed the sheet, or leave it
+    and have them build a PC via `create-character`, then
+    `gm-party.sh sheet "<player>" '<json>'`).
+  - `list` — the party block. `spotlight "<player>"` — set whose turn/focus.
+  - `mark-dead "<player>" --cause "..."` — retire ONE seat (see Death, below).
+
+## Attribute every action to the player who took it
+Input arrives tagged with a player (in local play they say who they are; the
+online relay prefixes actions, e.g. `[Sam] I ask the lantern to gutter`). Always:
+- Resolve and persist against **that player's seat**, never a shared PC. Every
+  `gm-player.sh` command takes `--player "<player>"`:
+  - HP: `bash tools/gm-player.sh hp "<char>" -5 --player "Sam"`
+  - XP / gold / conditions / appearance / kill: same `--player` flag.
+- Address the narration to the acting character **by name** so the table knows
+  who did what: *"Iren, the grain flares white in your palm —"*.
+
+## Give everyone spotlight (pacing)
+The cardinal sin of a multi-PC table is one player soloing while the rest watch.
+- **Go around.** After resolving one PC's action, turn to another by name:
+  *"While Iren steadies the flame — Della, the archivist is looking straight at
+  you. What do you do?"* Update `gm-party.sh spotlight` as focus moves.
+- **Action menu OFF-feel even when ON:** in multiplayer, prefer ending a beat by
+  naming **who is up next** over a generic 1/2/3 menu, unless one PC is mid-scene.
+- **Group checks:** when the whole party does one thing (sneak, search), each
+  player rolls their own PC; report per-player margins. Don't collapse to one roll.
+
+## Split the party (optional)
+Players may separate. Track each PC's location per-seat in the fiction and
+intercut like a TV show — a beat with group A, then a beat with group B, ending
+each on a small hook. Keep beats SHORT when split so no one waits long. (Location
+is still narrated per the fiction; the shared `move` reflects the main scene.)
+
+## Combat with multiple PCs
+Put the PCs in the SAME initiative order as the enemies:
+1. `bash tools/gm-combat.sh start`
+2. Each PC rolls initiative (`roll.sh "1d20+<mod>"`); add them:
+   `gm-combat.sh add-pc "<char>" <hp> --ac <n> --init <roll> --player "<player>"`.
+   Add GM allies with `add-ally`, enemies with `add-enemy`.
+3. `next-turn` cycles the whole order high→low. On each PC's turn, prompt THAT
+   player by name.
+4. **PC damage is authoritative on the seat sheet:**
+   `gm-player.sh hp "<char>" -N --player "<player>"` (the combat tracker's PC HP
+   is only a turn-order snapshot). Enemy damage stays in `gm-combat.sh hp`.
+5. A PC at 0 HP enters the kit's dying gate (D&D: death saves — `gm-combat`
+   skill). Death only on the kit's trigger or when the fiction makes survival
+   absurd — the same Stakes & Death rules as single-player, per player.
+
+## Death is non-destructive here (important)
+Single-player hands the ONE slot to a new hero (`become`). **Multiplayer never
+does that** — retiring one seat must not evict anyone else. When a PC dies:
+1. Persist the death on THAT seat: `gm-player.sh kill "<char>" --cause "..." --player "<player>"`, then `gm-party.sh mark-dead "<player>" --cause "..."` (flags the seat dead, archives that sheet to `players/<slug>/fallen/`). Log it (`gm-note.sh`).
+2. Narrate the death with weight. The rest of the party is still in the scene —
+   let them react, mourn, avenge, loot.
+3. Offer **that one player** the hand-off (the others keep playing):
+   1. Take over a party NPC as a NEW seat character.
+   2. Roll a fresh character who arrives in the story.
+   3. Step in as a canon figure from the source.
+   Build it (`create-character`), then `gm-party.sh sheet "<player>" '<json>'`
+   (or `add` if they'd been spectating). Bridge them into the fiction.
+4. The fallen hero stays in the world's memory — referenced, mourned, avenged.
+
+## Persist before narrating — per seat
+The golden rule still holds, now per player: resolve → persist to the acting
+player's seat (and to shared world state: NPCs, locations, facts, consequences) →
+THEN narrate. Shared world files (`npcs.json`, `locations.json`, `facts.json`)
+are written by the single GM session, so there is no write contention — one
+table, one narrator, many heroes.

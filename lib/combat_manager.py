@@ -41,7 +41,8 @@ class CombatManager(EntityManager):
         return data
 
     def add_combatant(self, name: str, hp: int, ac: int = 10,
-                      initiative: int = 0, side: str = 'enemy') -> Dict[str, Any]:
+                      initiative: int = 0, side: str = 'enemy',
+                      player: str = None) -> Dict[str, Any]:
         data = self._load()
         if not data.get('active'):
             data = self.start()
@@ -49,6 +50,11 @@ class CombatManager(EntityManager):
             'name': name, 'hp_current': int(hp), 'hp_max': int(hp),
             'ac': int(ac), 'conditions': [], 'initiative': int(initiative), 'side': side,
         }
+        # Multiplayer: a PC/ally combatant links to its player seat. HP shown here
+        # is a snapshot for turn-order display; the seat's character.json stays the
+        # authoritative HP (edit it via `gm-player.sh hp <name> ±N --player <seat>`).
+        if player:
+            combatant['player'] = player.strip().lower().replace(' ', '-')
         data.setdefault('combatants', []).append(combatant)
         data['combatants'].sort(key=lambda c: c.get('initiative', 0), reverse=True)
         self._save(data)
@@ -126,6 +132,13 @@ def main():
     sub.add_parser('start')
     p = sub.add_parser('add-enemy'); p.add_argument('name'); p.add_argument('hp', type=int)
     p.add_argument('--ac', type=int, default=10); p.add_argument('--init', type=int, default=0)
+    # Multiplayer: put player-characters and GM allies in the initiative order too.
+    p = sub.add_parser('add-pc'); p.add_argument('name'); p.add_argument('hp', type=int)
+    p.add_argument('--ac', type=int, default=10); p.add_argument('--init', type=int, default=0)
+    p.add_argument('--player', help='Player seat this PC belongs to')
+    p = sub.add_parser('add-ally'); p.add_argument('name'); p.add_argument('hp', type=int)
+    p.add_argument('--ac', type=int, default=10); p.add_argument('--init', type=int, default=0)
+    p.add_argument('--player', help='Player seat, if a human runs this ally')
     p = sub.add_parser('hp'); p.add_argument('name'); p.add_argument('delta', type=int)
     p = sub.add_parser('condition'); p.add_argument('name'); p.add_argument('op', choices=['add', 'remove']); p.add_argument('condition')
     sub.add_parser('next-turn')
@@ -144,6 +157,12 @@ def main():
         out = m.start()
     elif args.action == 'add-enemy':
         out = m.add_combatant(args.name, args.hp, ac=args.ac, initiative=args.init)
+    elif args.action == 'add-pc':
+        out = m.add_combatant(args.name, args.hp, ac=args.ac, initiative=args.init,
+                              side='pc', player=args.player)
+    elif args.action == 'add-ally':
+        out = m.add_combatant(args.name, args.hp, ac=args.ac, initiative=args.init,
+                              side='ally', player=args.player)
     elif args.action == 'hp':
         out = m.modify_hp(args.name, args.delta)
     elif args.action == 'condition':

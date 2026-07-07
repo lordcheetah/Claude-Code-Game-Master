@@ -555,37 +555,49 @@ class SessionManager(EntityManager):
                 flag = "  ⚠ FULL — a beat is due" if cur >= mx else ""
                 lines.append(f"{clock_name}: [{bar}] {cur}/{mx}{flag}")
 
-        # --- Character ---
-        lines.append("")
-        lines.append("--- CHARACTER ---")
+        # --- Character (single-player PC) ---
+        # Under multiplayer WITH seats, the PARTY block below is the source of
+        # truth for the humans, so the solo PC block is suppressed to avoid a
+        # phantom extra character. Single-player (flag off) is unchanged.
         char = None
-        if self.character_file.exists():
-            import json as _json
+        _mp_on = self.get_preferences().get("multiplayer", False)
+        _mp_seats = 0
+        if _mp_on:
             try:
-                with open(self.character_file, 'r', encoding='utf-8') as f:
-                    char = to_flat(_json.load(f))
-            except (ValueError, IOError):
-                pass
+                from party_manager import PartyManager
+                _mp_seats = len(PartyManager(str(self.campaign_dir)).list_seats().get("seats", []))
+            except Exception:
+                _mp_seats = 0
+        if not (_mp_on and _mp_seats):
+            lines.append("")
+            lines.append("--- CHARACTER ---")
+            if self.character_file.exists():
+                import json as _json
+                try:
+                    with open(self.character_file, 'r', encoding='utf-8') as f:
+                        char = to_flat(_json.load(f))
+                except (ValueError, IOError):
+                    pass
 
-        if char:
-            name = char.get('name', 'Unknown')
-            level = char.get('level', 1)
-            race = char.get('race', '?')
-            cls = char.get('class', '?')
-            hp_cur, hp_max = hp_current_max(char)
-            ac = char.get('ac', '?')
-            xp = char.get('xp', {})
-            if isinstance(xp, dict):
-                xp_val = xp.get('current', 0)
+            if char:
+                name = char.get('name', 'Unknown')
+                level = char.get('level', 1)
+                race = char.get('race', '?')
+                cls = char.get('class', '?')
+                hp_cur, hp_max = hp_current_max(char)
+                ac = char.get('ac', '?')
+                xp = char.get('xp', {})
+                if isinstance(xp, dict):
+                    xp_val = xp.get('current', 0)
+                else:
+                    xp_val = xp
+                gold = char.get('gold', 0)
+                conditions = char.get('conditions', [])
+                cond_str = ', '.join(conditions) if conditions else '(none)'
+                lines.append(f"{name} - Level {level} {race} {cls} | HP: {hp_cur}/{hp_max} | AC: {ac} | XP: {xp_val} | Gold: {gold}")
+                lines.append(f"Conditions: {cond_str}")
             else:
-                xp_val = xp
-            gold = char.get('gold', 0)
-            conditions = char.get('conditions', [])
-            cond_str = ', '.join(conditions) if conditions else '(none)'
-            lines.append(f"{name} - Level {level} {race} {cls} | HP: {hp_cur}/{hp_max} | AC: {ac} | XP: {xp_val} | Gold: {gold}")
-            lines.append(f"Conditions: {cond_str}")
-        else:
-            lines.append("No character found.")
+                lines.append("No character found.")
 
         # --- Party Members ---
         lines.append("")

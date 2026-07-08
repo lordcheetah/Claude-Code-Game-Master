@@ -33,6 +33,32 @@ online relay prefixes actions, e.g. `[Sam] I ask the lantern to gutter`). Always
 - Address the narration to the acting character **by name** so the table knows
   who did what: *"Iren, the grain flares white in your palm —"*.
 
+## Players come and go — join late, leave early, miss a session
+Real tables aren't fixed. Handle it so the game never stalls and no one loses a
+character:
+
+- **Join mid-session:** add a seat live — `gm-party.sh add "<player>" --sheet '<json>'`
+  (or `add` then have them build a PC via `create-character` and
+  `gm-party.sh sheet ...`). Then BRIDGE them into the fiction — a new arrival, a
+  reinforcement, someone who was here all along — don't just pop them onstage.
+- **Leave mid-session / absent for a session:** ask the leaving player (or the
+  table) HOW they want their character handled, then set it. Three choices:
+  1. **GM runs it as a party NPC** — `gm-party.sh away "<player>" --gm`. The PC
+     stays in the scene; you voice them, but keep them supportive, not
+     spotlight-stealing (they're someone else's hero).
+  2. **Another player runs it** — `gm-party.sh away "<player>" --to "<other player>"`.
+     That player now declares its actions too; resolve them on the absent seat
+     (`gm-player.sh ... --player "<absent player>"`).
+  3. **Write them out** — `gm-party.sh away "<player>" --write-out --reason "<excuse>"`.
+     The PC exits the fiction with an in-world reason (called away, taken ill,
+     following another lead). They're offscreen until they return.
+- **They come back:** `gm-party.sh back "<player>"` — they resume their own PC;
+  bridge them back into the scene.
+
+The party block and `gm-relay.sh who` show each seat's state, and loose timing
+**never waits on an absent seat** — only on connected, self-driven players who
+haven't acted. A GM/delegated PC is played; a written-out PC is offstage.
+
 ## Turn timing — LOOSE by default, STRICT only when you announce it
 This is the rule that makes or breaks a multi-PC table. Two modes:
 

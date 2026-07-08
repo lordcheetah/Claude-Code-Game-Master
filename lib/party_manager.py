@@ -118,7 +118,8 @@ class PartyManager:
         seat = self._find(roster, slug)
         if seat is None:
             seat = {"player": player.strip(), "character": character or "",
-                    "slug": slug, "status": "alive", "joined": _now_iso()}
+                    "slug": slug, "status": "alive", "control": "self",
+                    "joined": _now_iso()}
             roster["seats"].append(seat)
         else:
             if character:
@@ -204,6 +205,50 @@ class PartyManager:
         self._save(roster)
         return seat
 
+    def set_control(self, who: str, mode: str, delegate_to: str = None,
+                    reason: str = None) -> dict:
+        """Set how a seat is driven while its player is present or away:
+          'self'     — the player runs their own PC (the default; also `back`)
+          'gm'       — the GM runs the PC as a party NPC while the player is out
+          'delegate' — another seated player runs it (delegate_to = that player)
+          'away'     — the PC is written out of the fiction (reason = the excuse)
+        Handles join-late/leave-mid-session/whole-session-absent without stalling
+        the table or losing the character."""
+        roster = self._load()
+        seat = self._find(roster, who)
+        if seat is None:
+            raise ValueError(f"no seat for '{who}'")
+        seat.pop("absence_reason", None)
+        seat.pop("controlled_by", None)
+        if mode == "self":
+            seat["control"] = "self"
+        elif mode == "gm":
+            seat["control"] = "gm"
+        elif mode == "delegate":
+            d = self._find(roster, delegate_to or "")
+            if d is None:
+                raise ValueError(f"no seat to delegate to: '{delegate_to}'")
+            if d["slug"] == seat["slug"]:
+                raise ValueError("cannot delegate a seat to itself")
+            seat["control"] = "delegate"
+            seat["controlled_by"] = d["slug"]
+        elif mode in ("away", "write-out", "writeout"):
+            seat["control"] = "away"
+            if reason:
+                seat["absence_reason"] = reason
+        else:
+            raise ValueError(f"unknown control mode: {mode}")
+        # Don't leave the spotlight on a seat nobody is actively driving.
+        if seat["control"] != "self" and roster.get("spotlight") == seat["slug"]:
+            active = [s["slug"] for s in roster["seats"]
+                      if s.get("status") == "alive"
+                      and s.get("control", "self") == "self"
+                      and s["slug"] != seat["slug"]]
+            if active:
+                roster["spotlight"] = active[0]
+        self._save(roster)
+        return seat
+
     def list_seats(self) -> dict:
         return self._load()
 
@@ -217,17 +262,30 @@ class PartyManager:
         if not seats:
             return ""
         spotlight = roster.get("spotlight")
+        # map slug -> player name for delegate labels
+        who_by_slug = {s.get("slug"): s.get("player") for s in seats}
         lines = ["THE PARTY (human players — each is a peer, give everyone spotlight):"]
+        any_absent = False
         for seat in seats:
             slug = seat.get("slug", "")
             sheet = self.json_ops.load_json(f"players/{slug}/character.json") or {}
             name = sheet.get("name") or seat.get("character") or "(no character yet)"
             marker = "★" if slug == spotlight else "•"
             dead = seat.get("status") == "dead"
+            control = seat.get("control", "self")
             bits = [f"{marker} {seat.get('player', slug)} → {name}"]
             if dead:
                 bits.append("[FALLEN]")
+            elif control == "away":
+                any_absent = True
+                bits.append(f"[offscreen — {seat.get('absence_reason') or 'absent this session'}]")
             else:
+                if control == "gm":
+                    any_absent = True
+                    bits.append("[player away — GM runs as an NPC]")
+                elif control == "delegate":
+                    any_absent = True
+                    bits.append(f"[player away — run by {who_by_slug.get(seat.get('controlled_by'), '?')}]")
                 # hp is stored as a scalar in some kits, a {current,max} dict in
                 # others — read both shapes so the bar renders either way.
                 raw_hp = sheet.get("hp")
@@ -247,6 +305,9 @@ class PartyManager:
                     bits.append("(" + ", ".join(conds) + ")")
             lines.append("  " + "  ".join(bits))
         lines.append("★ = spotlight (whose turn/focus). Address beats to the acting PC by name.")
+        if any_absent:
+            lines.append("Absent players are handled as tagged — run GM/delegated PCs, keep "
+                         "offscreen ones out of the scene; don't wait on them for turns.")
         return "\n".join(lines)
 
 
@@ -276,6 +337,17 @@ def main():
     p_sheet = sub.add_parser("sheet", help="Set a seat's character sheet from JSON")
     p_sheet.add_argument("who", help="Player name or slug")
     p_sheet.add_argument("json", help="Character sheet JSON")
+
+    p_away = sub.add_parser("away", help="Handle an absent player (leave / miss a session)")
+    p_away.add_argument("who", help="Player name or slug going away")
+    g = p_away.add_mutually_exclusive_group(required=True)
+    g.add_argument("--gm", action="store_true", help="GM runs their PC as a party NPC")
+    g.add_argument("--to", metavar="PLAYER", help="Delegate their PC to another player")
+    g.add_argument("--write-out", action="store_true", help="Write the PC out of the fiction")
+    p_away.add_argument("--reason", help="In-fiction excuse for a write-out")
+
+    p_back = sub.add_parser("back", help="A player returns; they run their own PC again")
+    p_back.add_argument("who", help="Player name or slug returning")
 
     sub.add_parser("block", help="Print the party context block")
 
@@ -315,6 +387,20 @@ def main():
     elif args.action == "sheet":
         ok = mgr.set_sheet(args.who, args.json)
         print("Sheet saved." if ok else "Failed to save sheet.")
+    elif args.action == "away":
+        if args.gm:
+            seat = mgr.set_control(args.who, "gm")
+            print(f"{seat['player']} is away — the GM now runs {seat.get('character') or seat['slug']} as a party NPC.")
+        elif args.to:
+            seat = mgr.set_control(args.who, "delegate", delegate_to=args.to)
+            print(f"{seat['player']} is away — {args.to} now runs {seat.get('character') or seat['slug']}.")
+        else:
+            seat = mgr.set_control(args.who, "away", reason=args.reason)
+            print(f"{seat['player']} is away — {seat.get('character') or seat['slug']} is written offscreen"
+                  + (f": {args.reason}" if args.reason else ".") )
+    elif args.action == "back":
+        seat = mgr.set_control(args.who, "self")
+        print(f"Welcome back — {seat['player']} runs {seat.get('character') or seat['slug']} again.")
     elif args.action == "block":
         print(mgr.get_party_block())
 

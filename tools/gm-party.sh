@@ -25,7 +25,7 @@ ACTION="$1"
 shift 2>/dev/null || true
 
 case "$ACTION" in
-    add|list|spotlight|remove|mark-dead|sheet|block)
+    add|list|spotlight|remove|mark-dead|sheet|away|back|block)
         $PYTHON_CMD "$LIB_DIR/party_manager.py" "$ACTION" "$@"
         ;;
     -h|--help|"")
@@ -38,6 +38,9 @@ case "$ACTION" in
         echo "  spotlight \"<player>\"              - Set whose turn/focus is active"
         echo "  sheet \"<player>\" '<json>'         - Set/replace a seat's character sheet"
         echo "  mark-dead \"<player>\" [--cause X]  - Retire ONE seat (others play on)"
+        echo "  away \"<player>\" --gm | --to \"<other>\" | --write-out [--reason X]"
+        echo "                                    - Handle a leaving/absent player (GM-run / delegate / write offscreen)"
+        echo "  back \"<player>\"                   - A returning player runs their own PC again"
         echo "  remove \"<player>\"                 - Remove a seat"
         echo "  block                             - Print the GM context party block"
         echo ""

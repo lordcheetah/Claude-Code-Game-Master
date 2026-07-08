@@ -168,7 +168,10 @@ class RelayManager:
         except Exception:
             roster = {"seats": []}
         return [{"player": s.get("player"), "slug": s.get("slug"),
-                 "character": s.get("character"), "status": s.get("status", "alive")}
+                 "character": s.get("character"), "status": s.get("status", "alive"),
+                 "control": s.get("control", "self"),
+                 "controlled_by": s.get("controlled_by"),
+                 "absence_reason": s.get("absence_reason")}
                 for s in roster.get("seats", [])]
 
     def match_seat(self, who):
@@ -236,9 +239,13 @@ class RelayManager:
             seen = pres.get(slug, {}).get("last_seen")
             connected = seen is not None and _age_secs(seen) <= self.ACTIVE_WINDOW
             has_pending = slug in pending_seats
+            # Only WAIT (loose timing) for a live, self-driven, connected player who
+            # hasn't acted. GM/delegated/written-out seats are handled, not waited on.
+            self_driven = s.get("control", "self") == "self"
             out.append({**s, "connected": connected, "last_seen": seen,
                         "has_pending": has_pending,
-                        "waiting": connected and not has_pending and s.get("status") == "alive"})
+                        "waiting": (connected and not has_pending
+                                    and s.get("status") == "alive" and self_driven)})
         return out
 
     def status(self):
@@ -330,11 +337,19 @@ def main():
             emit({"presence": view}, json_mode=True)
         else:
             waiting = [v for v in view if v["waiting"]]
+            by_slug = {v.get("slug"): v.get("player") for v in view}
             for v in view:
+                control = v.get("control", "self")
                 if v.get("status") != "alive":
                     dot, note = "✗", "fallen"
+                elif control == "gm":
+                    dot, note = "◐", "player away — GM runs as NPC"
+                elif control == "delegate":
+                    dot, note = "◐", f"player away — run by {by_slug.get(v.get('controlled_by'), '?')}"
+                elif control == "away":
+                    dot, note = "○", f"offscreen — {v.get('absence_reason') or 'absent'}"
                 elif not v["connected"]:
-                    dot, note = "○", "unmanned — GM-run or offstage"
+                    dot, note = "○", "not connected — set away? (gm-party.sh away ...)"
                 elif v["has_pending"]:
                     dot, note = "●", "✓ acted this beat"
                 else:

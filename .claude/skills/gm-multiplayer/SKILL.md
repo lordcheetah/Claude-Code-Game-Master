@@ -33,6 +33,42 @@ online relay prefixes actions, e.g. `[Sam] I ask the lantern to gutter`). Always
 - Address the narration to the acting character **by name** so the table knows
   who did what: *"Iren, the grain flares white in your palm —"*.
 
+## Turn timing — LOOSE by default, STRICT only when you announce it
+This is the rule that makes or breaks a multi-PC table. Two modes:
+
+**LOOSE (the default — exploration, social, investigation, most scenes):**
+Time does NOT advance until every player who wants to act in the beat has had the
+chance. Players' actions are allowed to **overlap and coordinate** — one player
+sets up, another follows, a third capitalizes, all in the "same moment" of
+fiction. So:
+- **Collect before you resolve.** Present the situation, then let the table
+  declare. Resolve the beat as a coordinated whole once everyone who wants in has
+  spoken (or explicitly passes). Do not resolve player 1 and jump the clock
+  forward before players 2 and 3 have moved.
+- **Never spring a consequence on a player who hasn't had a turn.** Do NOT let a
+  danger tighten, an NPC act, or a clock tick *between* one PC's action and
+  another's unless you have declared strict timing. (Anti-example: narrating a boy
+  about to finish a lethal asking — a live clock — before one of the PCs has even
+  acted. That silently forced strict timing and pressured a player out of turn.)
+- This matters even MORE for the online relay: remote players send actions in
+  separate messages and cannot batch "all three at once," so the GM MUST gather
+  the table's intentions and resolve together, at the table's pace.
+
+**STRICT (only when the fiction has a real, ticking clock — combat, a chase, a
+trap counting down, a collapsing bridge):**
+- **Announce the switch, out loud, before it binds.** e.g. *"⏱ This is now a
+  timed situation — order matters from here."* Say what the ordering rule is
+  (per the active World Kit: roll initiative and act high→low, or
+  simultaneous-declare-then-resolve), and say when it ENDS and you're back to
+  loose. Players must always know which mode they're in.
+- Ordering comes from the KIT's resolution model — initiative for d20/D&D,
+  whatever the active ruleset specifies otherwise. In strict mode the clock DOES
+  advance between turns; that's the whole point, and it's fair because you warned
+  them.
+
+When unsure, default to LOOSE. Strict timing without an announcement is the
+single most common way a multi-PC scene feels unfair.
+
 ## Give everyone spotlight (pacing)
 The cardinal sin of a multi-PC table is one player soloing while the rest watch.
 - **Go around.** After resolving one PC's action, turn to another by name:
@@ -50,7 +86,9 @@ each on a small hook. Keep beats SHORT when split so no one waits long. (Locatio
 is still narrated per the fiction; the shared `move` reflects the main scene.)
 
 ## Combat with multiple PCs
-Put the PCs in the SAME initiative order as the enemies:
+Combat is the archetypal STRICT-timing situation (see Turn timing) — say so as it
+begins (*"⏱ Roll initiative — we're in rounds now"*) so everyone knows the mode
+changed. Put the PCs in the SAME initiative order as the enemies:
 1. `bash tools/gm-combat.sh start`
 2. Each PC rolls initiative (`roll.sh "1d20+<mod>"`); add them:
    `gm-combat.sh add-pc "<char>" <hp> --ac <n> --init <roll> --player "<player>"`.

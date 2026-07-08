@@ -4,6 +4,7 @@ Player character management module for GM tools
 Handles PC operations: XP, HP, level progression, and character data
 """
 
+import os
 import sys
 import json
 from typing import Dict, List, Optional, Any
@@ -13,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
-from character_schema import to_flat, is_open_schema
+from character_schema import to_flat, is_open_schema, hp_current_max, set_hp_current
 
 
 class PlayerManager(EntityManager):
@@ -45,15 +46,26 @@ class PlayerManager(EntityManager):
         355000,  # Level 20
     ]
 
-    def __init__(self, world_state_dir: str = None):
+    def __init__(self, world_state_dir: str = None, player_slug: str = None):
         super().__init__(world_state_dir)
 
         # Additional paths specific to player management
         self.world_state_dir = self.campaign_dir  # Alias for compatibility
         self.campaign_file = "campaign-overview.json"
 
-        # New: single character file per campaign
-        self.character_file = self.campaign_dir / "character.json"
+        # Multiplayer seat support (additive, opt-in): when a player_slug is given,
+        # this manager reads/writes that seat's sheet under
+        # players/<slug>/character.json instead of the campaign-root character.json.
+        # player_slug=None (the default) is byte-identical to single-player.
+        # character_relpath is the path RELATIVE to campaign_dir that json_ops uses;
+        # character_file is the absolute Path used for existence/open.
+        self.player_slug = player_slug
+        if player_slug:
+            self.character_relpath = f"players/{player_slug}/character.json"
+            (self.campaign_dir / "players" / player_slug).mkdir(parents=True, exist_ok=True)
+        else:
+            self.character_relpath = "character.json"
+        self.character_file = self.campaign_dir / self.character_relpath
 
         # Legacy: characters directory (for backwards compatibility)
         self.characters_dir = self.campaign_dir / "characters"
@@ -63,8 +75,12 @@ class PlayerManager(EntityManager):
         return name.lower().replace(' ', '-')
 
     def _is_using_single_character(self) -> bool:
-        """Check if we're using the new single character.json format"""
-        return self.character_file.exists()
+        """Check if we're using the new single character.json format.
+
+        A per-seat multiplayer manager is ALWAYS single-file (its seat sheet lives
+        at players/<slug>/character.json), even before that file exists yet — so a
+        first save writes the seat, not the legacy characters/ dir."""
+        return bool(self.player_slug) or self.character_file.exists()
 
     def _get_character_path(self, name: str) -> Path:
         """Get path to character JSON file"""
@@ -89,7 +105,7 @@ class PlayerManager(EntityManager):
             except (json.JSONDecodeError, IOError) as e:
                 print(f"[ERROR] Failed to load character: {e}")
                 return None
-            return self._normalize_loaded(raw, "character.json")
+            return self._normalize_loaded(raw, self.character_relpath)
 
         # Legacy format: need name to find file
         if not name:
@@ -123,9 +139,9 @@ class PlayerManager(EntityManager):
         """Save character data to file using atomic writes via json_ops"""
         # Persist in canonical flat shape (no-op if already flat).
         data = to_flat(data)
-        # New format: single character.json
+        # New format: single character.json (or a seat's players/<slug>/character.json)
         if self._is_using_single_character():
-            return self.json_ops.save_json("character.json", data)
+            return self.json_ops.save_json(self.character_relpath, data)
 
         # Legacy format: characters/<name>.json
         char_path = self._get_character_path(name)
@@ -210,9 +226,9 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return None
 
-        hp = char.get('hp', {})
+        hpc, hpm = hp_current_max(char)
         gold = char.get('gold', 0)
-        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hpc}/{hpm}, Gold: {gold})"
         status = char.get('status')
         if status in ('dying', 'dead'):
             summary += f" | {status.upper()}"
@@ -229,10 +245,10 @@ class PlayerManager(EntityManager):
         if self._is_using_single_character():
             char = self._load_character()
             if char:
-                hp = char.get('hp', {})
+                hpc, hpm = hp_current_max(char)
                 gold = char.get('gold', 0)
                 summaries.append(
-                    f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+                    f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hpc}/{hpm}, Gold: {gold})"
                 )
             return summaries
 
@@ -242,10 +258,10 @@ class PlayerManager(EntityManager):
                 try:
                     with open(char_file, 'r', encoding='utf-8') as f:
                         char = json.load(f)
-                    hp = char.get('hp', {})
+                    hpc, hpm = hp_current_max(char)
                     gold = char.get('gold', 0)
                     summaries.append(
-                        f"{char.get('name', char_file.stem)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hp.get('current', 0)}/{hp.get('max', 0)}, Gold: {gold})"
+                        f"{char.get('name', char_file.stem)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hpc}/{hpm}, Gold: {gold})"
                     )
                 except (json.JSONDecodeError, IOError):
                     continue
@@ -454,13 +470,13 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return {'success': False}
 
-        hp = char.get('hp', {})
-        current_hp = hp.get('current', 0)
-        max_hp = hp.get('max', 0)
+        # Read HP tolerating both the scalar and {current,max} shapes across kits.
+        current_hp, max_hp = hp_current_max(char)
 
-        # Apply change and clamp between 0 and max
-        new_hp = max(0, min(current_hp + amount, max_hp))
-        char['hp']['current'] = new_hp
+        # Apply change and clamp between 0 and max (no upper clamp if max unknown).
+        new_hp = current_hp + amount
+        new_hp = max(0, min(new_hp, max_hp)) if max_hp else max(0, new_hp)
+        set_hp_current(char, new_hp)  # writes back in the char's existing shape
 
         # Track the dying gate. 0 HP -> dying (unless already dead). Healing off
         # 0 -> alive. A 'dead' status is sticky (only kill_character sets it; only
@@ -513,10 +529,7 @@ class PlayerManager(EntityManager):
             return {'success': False}
 
         char_name = char.get('name', name)
-        hp = char.get('hp', {})
-        max_hp = hp.get('max', 0)
-        char.setdefault('hp', {})
-        char['hp']['current'] = 0
+        set_hp_current(char, 0)  # 0 HP in whatever shape the sheet uses
         char['status'] = 'dead'
         char['died_at'] = self.get_timestamp()
         if cause:
@@ -608,8 +621,8 @@ class PlayerManager(EntityManager):
         print(f"BECOME You now play as {npc_name}.")
         if archived_path is not None:
             print(f"Archived the fallen hero to: {archived_path}")
-        hp = new_char.get('hp', {})
-        print(f"HP: {hp.get('current', 0)}/{hp.get('max', 0)} | "
+        hpc, hpm = hp_current_max(new_char)
+        print(f"HP: {hpc}/{hpm} | "
               f"Level {new_char.get('level', 1)} {new_char.get('race', '?')} "
               f"{new_char.get('class', '?')}")
 
@@ -859,6 +872,27 @@ class PlayerManager(EntityManager):
             return {'success': False}
 
 
+def _strip_player_flag(argv):
+    """Pull a global `--player <name>` (or `--player=<name>`) out of argv before
+    argparse sees it, returning (remaining_argv, player_slug_or_None). Mirrors the
+    strip_json_flag pattern so every subcommand stays seat-agnostic."""
+    out, slug = [], None
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok == "--player" and i + 1 < len(argv):
+            slug = argv[i + 1].strip().lower().replace(" ", "-")
+            i += 2
+            continue
+        if tok.startswith("--player="):
+            slug = tok.split("=", 1)[1].strip().lower().replace(" ", "-")
+            i += 1
+            continue
+        out.append(tok)
+        i += 1
+    return out, (slug or None)
+
+
 def main():
     """CLI interface for player management"""
     import argparse
@@ -944,13 +978,22 @@ def main():
 
     from cli_output import wants_json, strip_json_flag, emit, emit_error
     json_mode = wants_json()
-    args = parser.parse_args(strip_json_flag(sys.argv[1:]))
+
+    # Multiplayer seat routing: a global `--player <name>` (parsed out before
+    # argparse, like --json) points every subcommand at that seat's sheet under
+    # players/<slug>/. Absent → single-player character.json, unchanged.
+    argv, player_slug = _strip_player_flag(strip_json_flag(sys.argv[1:]))
+    if not player_slug:
+        _env_player = os.environ.get("GM_PLAYER", "").strip()
+        if _env_player:
+            player_slug = _env_player.lower().replace(" ", "-")
+    args = parser.parse_args(argv)
 
     if not args.action:
         parser.print_help()
         sys.exit(1)
 
-    manager = PlayerManager()
+    manager = PlayerManager(player_slug=player_slug)
 
     if json_mode and args.action in ('get', 'show'):
         # `show --json` emits the full active (or named) character record.

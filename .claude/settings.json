@@ -23,7 +23,14 @@
       "Bash(bash tools/gm-enhance.sh*)",
       "Bash(bash tools/gm-image.sh*)",
       "Bash(bash tools/gm-conlang.sh*)",
-      "Bash(bash tools/gm-chronicle.sh*)"
+      "Bash(bash tools/gm-chronicle.sh*)",
+      "Bash(bash tools/gm-sourcebook.sh*)",
+      "Bash(bash tools/gm-party.sh*)",
+      "Bash(bash tools/gm-relay.sh*)"
+    ],
+    "ask": [
+      "Bash(bash tools/gm-reset.sh*)",
+      "Bash(bash tools/gm-campaign.sh delete*)"
     ]
   },
   "statusLine": {

@@ -193,9 +193,13 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/session_manager.py" choices "$@"
         ;;
 
+    multiplayer)
+        $PYTHON_CMD "$LIB_DIR/session_manager.py" multiplayer "$@"
+        ;;
+
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: start, end, status, move, context, choices, save, restore, list-saves, delete-save, history"
+        echo "Valid actions: start, end, status, move, context, choices, multiplayer, save, restore, list-saves, delete-save, history"
         exit 1
         ;;
 esac

@@ -168,10 +168,15 @@ function render(e){
   (e.images||[]).forEach(fn=>{ const im=document.createElement('img'); im.src='/img/'+encodeURIComponent(fn); div.appendChild(im); });
   $('#feed').appendChild(div); window.scrollTo(0,document.body.scrollHeight);
 }
+let KICKED=false;
 async function poll(){
+  if(KICKED) return;
   try{
     const r=await fetch('/feed?since='+SINCE+'&player='+encodeURIComponent(PLAYER));
     const d=await r.json();
+    if(d.kicked){ KICKED=true;
+      render({text:'— You have been removed from the table by the GM. —', kind:'system'});
+      $('#say').disabled=true; $('#saybtn').disabled=true; return; }
     (d.entries||[]).forEach(e=>{ SINCE=Math.max(SINCE,e.id); render(e); });
     setConn(true);
   }catch(_){ setConn(false); }
@@ -203,6 +208,7 @@ $('#say').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.pre
 class Handler(BaseHTTPRequestHandler):
     relay = None        # RelayManager (set by serve())
     code = ""           # room code ("" = open)
+    MAX_ACTION_CHARS = 2000   # cap a single player action (abuse mitigation)
 
     def log_message(self, *a):
         pass  # quiet
@@ -238,6 +244,10 @@ class Handler(BaseHTTPRequestHandler):
             who = (q.get("player", [""]) or [""])[0]
             if who:
                 seat = self.relay.match_seat(who)
+                if seat and seat.get("locked"):
+                    # Kicked: expire their presence at once and tell the client.
+                    self.relay.clear_presence(seat.get("slug"))
+                    return self._send({"entries": [], "last": int(since or 0), "kicked": True})
                 if seat:
                     self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             entries = self.relay.feed(since)
@@ -259,6 +269,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send({"ok": False, "error": "no such seat — ask the GM to add you"}, status=400)
             if seat.get("status") != "alive":
                 return self._send({"ok": False, "error": "that character has fallen"}, status=400)
+            if seat.get("locked"):
+                return self._send({"ok": False, "error": "you have been removed from this seat by the GM"}, status=403)
             self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             self._send({"ok": True, "seat": seat})
         elif u.path == "/say":
@@ -266,8 +278,12 @@ class Handler(BaseHTTPRequestHandler):
             text = (d.get("text") or "").strip()
             if not seat:
                 return self._send({"ok": False, "error": "no such seat"}, status=400)
+            if seat.get("locked"):
+                return self._send({"ok": False, "error": "you have been removed from this seat", "kicked": True}, status=403)
             if not text:
                 return self._send({"ok": False, "error": "empty"}, status=400)
+            if len(text) > self.MAX_ACTION_CHARS:   # abuse cap
+                text = text[:self.MAX_ACTION_CHARS]
             self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             rec = self.relay.submit(seat.get("player"), text, seat=seat.get("slug"), source="web")
             self._send({"ok": True, "id": rec["id"]})

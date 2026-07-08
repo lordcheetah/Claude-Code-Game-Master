@@ -120,8 +120,12 @@ def run(token, channel_id=None):
         seat = seat_by_slug(slug)
         if not seat:
             return
+        if seat.get("locked"):
+            state["seats"].pop(msg.author.id, None)
+            await msg.channel.send("You’ve been removed from that seat by the GM.")
+            return
         relay.touch_presence(slug, seat["player"])
-        relay.submit(seat["player"], content, seat=slug, source="discord")
+        relay.submit(seat["player"], content[:2000], seat=slug, source="discord")
         try:
             await msg.add_reaction("📨")   # queued for the GM
         except discord.DiscordException:
@@ -145,6 +149,9 @@ def run(token, channel_id=None):
             seat = relay.match_seat(arg)
             if not seat or seat.get("status") != "alive":
                 await msg.channel.send(f"No open seat matching `{arg}`. Try `!seats`.")
+                return
+            if seat.get("locked"):
+                await msg.channel.send("That seat has been locked by the GM.")
                 return
             state["seats"][msg.author.id] = seat["slug"]
             relay.touch_presence(seat["slug"], seat["player"])

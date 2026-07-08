@@ -253,6 +253,39 @@ class PartyManager:
         self._save(roster)
         return seat
 
+    def kick(self, who: str, reason: str = None) -> dict:
+        """Lock a seat: the human is removed and cannot join/act from it until
+        `unkick`. Use for a misbehaving player, or to force off a stale 'connected'
+        status a background browser tab is keeping alive. GM-only (local). The
+        seat and its character remain — handle the now-unmanned PC with `away` if
+        you like. The relay server enforces the lock and expires their presence."""
+        roster = self._load()
+        seat = self._find(roster, who)
+        if seat is None:
+            raise ValueError(f"no seat for '{who}'")
+        seat["locked"] = True
+        if reason:
+            seat["kicked_reason"] = reason
+        if roster.get("spotlight") == seat["slug"]:
+            active = [s["slug"] for s in roster["seats"]
+                      if s.get("status") == "alive" and not s.get("locked")
+                      and s["slug"] != seat["slug"]]
+            if active:
+                roster["spotlight"] = active[0]
+        self._save(roster)
+        return seat
+
+    def unkick(self, who: str) -> dict:
+        """Clear a seat's lock so the player may rejoin."""
+        roster = self._load()
+        seat = self._find(roster, who)
+        if seat is None:
+            raise ValueError(f"no seat for '{who}'")
+        seat["locked"] = False
+        seat.pop("kicked_reason", None)
+        self._save(roster)
+        return seat
+
     def get_policy(self, who: str) -> dict:
         """The player's standing absence preference (defaults to write-out)."""
         roster = self._load()
@@ -329,6 +362,9 @@ class PartyManager:
             bits = [f"{marker} {seat.get('player', slug)} → {name}"]
             if dead:
                 bits.append("[FALLEN]")
+            elif seat.get("locked"):
+                any_absent = True
+                bits.append("[player REMOVED — seat locked; unkick to re-open]")
             elif control == "away":
                 any_absent = True
                 bits.append(f"[offscreen — {seat.get('absence_reason') or 'absent this session'}]")
@@ -410,6 +446,13 @@ def main():
     p_back = sub.add_parser("back", help="A player returns; they run their own PC again")
     p_back.add_argument("who", help="Player name or slug returning")
 
+    p_kick = sub.add_parser("kick", help="Remove a player from a seat (lock it against join/act)")
+    p_kick.add_argument("who", help="Player name or slug to remove")
+    p_kick.add_argument("--reason", help="Why (logged on the seat)")
+
+    p_unkick = sub.add_parser("unkick", help="Unlock a kicked seat so the player may rejoin")
+    p_unkick.add_argument("who", help="Player name or slug to re-open")
+
     sub.add_parser("block", help="Print the party context block")
 
     from cli_output import wants_json, strip_json_flag, emit
@@ -487,6 +530,14 @@ def main():
     elif args.action == "back":
         seat = mgr.set_control(args.who, "self")
         print(f"Welcome back — {seat['player']} runs {seat.get('character') or seat['slug']} again.")
+    elif args.action == "kick":
+        seat = mgr.kick(args.who, reason=args.reason)
+        print(f"Removed {seat['player']} from {seat.get('character') or seat['slug']} — seat locked."
+              + (f" ({args.reason})" if args.reason else "")
+              + " Handle the now-unmanned PC with `away` if needed; `unkick` to re-open.")
+    elif args.action == "unkick":
+        seat = mgr.unkick(args.who)
+        print(f"Seat re-opened — {seat['player']} may rejoin.")
     elif args.action == "block":
         print(mgr.get_party_block())
 

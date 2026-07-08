@@ -25,7 +25,7 @@ ACTION="$1"
 shift 2>/dev/null || true
 
 case "$ACTION" in
-    add|list|spotlight|remove|mark-dead|sheet|away|back|policy|block)
+    add|list|spotlight|remove|mark-dead|sheet|away|back|policy|kick|unkick|block)
         $PYTHON_CMD "$LIB_DIR/party_manager.py" "$ACTION" "$@"
         ;;
     -h|--help|"")

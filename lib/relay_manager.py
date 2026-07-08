@@ -197,6 +197,7 @@ class RelayManager:
                  "control": s.get("control", "self"),
                  "controlled_by": s.get("controlled_by"),
                  "absence_reason": s.get("absence_reason"),
+                 "locked": bool(s.get("locked")),
                  "absence_policy": s.get("absence_policy") or {"mode": "write-out"}}
                 for s in roster.get("seats", [])]
 
@@ -254,6 +255,22 @@ class RelayManager:
             tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
             tmp.replace(self.presence_file)
 
+    def clear_presence(self, seat):
+        """Drop a seat's presence stamp immediately (server-side; used when a
+        kicked/locked seat polls, so its 'connected' dot expires at once)."""
+        if not seat:
+            return
+        with self._presence_lock:
+            try:
+                data = json.loads(self.presence_file.read_text(encoding="utf-8"))
+            except (IOError, json.JSONDecodeError, FileNotFoundError):
+                return
+            if seat in data:
+                data.pop(seat, None)
+                tmp = self.presence_file.with_suffix(".tmp")
+                tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                tmp.replace(self.presence_file)
+
     def read_presence(self):
         try:
             return json.loads(self.presence_file.read_text(encoding="utf-8"))
@@ -270,11 +287,13 @@ class RelayManager:
         for s in self.seats():
             slug = s.get("slug")
             seen = pres.get(slug, {}).get("last_seen")
-            connected = seen is not None and _age_secs(seen) <= self.ACTIVE_WINDOW
+            locked = bool(s.get("locked"))
+            connected = (not locked and seen is not None
+                         and _age_secs(seen) <= self.ACTIVE_WINDOW)
             has_pending = slug in pending_seats
             # Only WAIT (loose timing) for a live, self-driven, connected player who
-            # hasn't acted. GM/delegated/written-out seats are handled, not waited on.
-            self_driven = s.get("control", "self") == "self"
+            # hasn't acted. GM/delegated/written-out/locked seats are not waited on.
+            self_driven = s.get("control", "self") == "self" and not locked
             out.append({**s, "connected": connected, "last_seen": seen,
                         "has_pending": has_pending,
                         "waiting": (connected and not has_pending
@@ -377,6 +396,8 @@ def main():
                 control = v.get("control", "self")
                 if v.get("status") != "alive":
                     dot, note = "✗", "fallen"
+                elif v.get("locked"):
+                    dot, note = "⊘", "REMOVED (seat locked — gm-party.sh unkick to re-open)"
                 elif control == "gm":
                     dot, note = "◐", "player away — GM runs as NPC"
                 elif control == "delegate":

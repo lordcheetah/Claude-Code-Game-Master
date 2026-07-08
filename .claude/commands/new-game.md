@@ -22,6 +22,31 @@ CAMPAIGN_DIR=$(bash tools/gm-campaign.sh path)
 ```
 (If the name exists: offer switch / rename / recreate.)
 
+### Branch: original world, or adapting a KNOWN IP?
+
+Ask up front (AskUserQuestion) whether this is an **original** world or **based on
+existing lore/IP** (a video-game series, film, novel, myth) that has no rulebook to
+import. If original → run the questionnaire below as normal.
+
+**If adapting a known IP** (and a `TAVILY_API_KEY` is set — check with
+`bash tools/gm-research.sh --help` availability; if no key, tell the player to add one
+or fall back to the manual questionnaire seeded by what they know):
+
+1. Ask the 3 framing questions the seed needs that research can't decide: **register/tone**,
+   **protagonist framing** (play-as-canon / an original lead / a party), and any **do/don't**
+   (canon depth, eras to include or avoid).
+2. **Spawn the `lore-researcher` agent** with {the IP, the chosen tone, the protagonist
+   framing, the campaign dir}. It researches the canon via Tavily, writes
+   `source-material/<ip-slug>-lore.md`, and pre-fills `world-seed.json` with real canon.
+3. **Embed the researched lore** through the same pipeline import uses, so the fan-out
+   authors and play-time RAG can ground against it:
+   ```bash
+   bash tools/gm-extract.sh prepare "$CAMPAIGN_DIR/source-material/<ip-slug>-lore.md" "<CAMPAIGN_NAME>"
+   ```
+4. **Show the player the pre-filled `world-seed.json`** (premise, genre_bend, voice, axes)
+   and let them confirm/edit — canon is a starting point, not a cage. Then continue to
+   **PHASE B** with the seed already written (skip the questionnaire below).
+
 Run the questionnaire with **AskUserQuestion**. Ask for: a one-line **premise**
 (free text — "Conan but on a drowned coast"), **tone**, **magic level**, and
 **setting type** (reuse the classic options). Then ALWAYS ask the **genre bend** —

@@ -269,7 +269,7 @@ class Handler(BaseHTTPRequestHandler):
             if not text:
                 return self._send({"ok": False, "error": "empty"}, status=400)
             self.relay.touch_presence(seat.get("slug"), seat.get("player"))
-            rec = self.relay.submit(seat.get("player"), text, seat=seat.get("slug"))
+            rec = self.relay.submit(seat.get("player"), text, seat=seat.get("slug"), source="web")
             self._send({"ok": True, "id": rec["id"]})
         elif u.path == "/prefs":
             # A player sets their own standing absence preference.

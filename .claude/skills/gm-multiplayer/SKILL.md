@@ -178,6 +178,15 @@ The relay-aware beat loop (this is the online expression of LOOSE timing):
    `gm-relay.sh stop` ends it. Optional: drive the cadence with `/loop` so you
    drain-and-respond whenever new actions arrive.
 
+**Discord instead of (or alongside) the web page.** `bash tools/gm-relay.sh discord`
+runs a bot front-end onto the SAME seam (needs `DISCORD_BOT_TOKEN` in `.env` and
+`uv pip install "discord.py>=2.3.0"`). Players `!join <seat>` in the channel and
+then type to act; the GM's `post`ed narration (and plates) appear there. Your GM
+loop is unchanged — `drain` merges web and Discord actions together (each shows
+its `(via discord)` source), and `post` reaches everyone on both transports. Run
+both at once for a mixed table; each writes its own inbox file, so they never
+contend.
+
 ## Persist before narrating — per seat
 The golden rule still holds, now per player: resolve → persist to the acting
 player's seat (and to shared world state: NPCs, locations, facts, consequences) →

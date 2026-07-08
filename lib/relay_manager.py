@@ -55,7 +55,9 @@ class RelayManager:
         self.campaign_dir = Path(campaign_dir)
         self.relay_dir = self.campaign_dir / "relay"
         self.relay_dir.mkdir(parents=True, exist_ok=True)
-        self.inbox = self.relay_dir / "inbox.jsonl"
+        # Per-source inbox files (inbox-web.jsonl, inbox-discord.jsonl, ...): each
+        # front-end is the single writer of its own file, so multiple transports
+        # (web + Discord) can run at once without contending. drain() merges them.
         self.cursor = self.relay_dir / "inbox.cursor"
         self.outbox = self.relay_dir / "outbox.jsonl"
         self.server_state = self.relay_dir / "server.json"
@@ -108,35 +110,58 @@ class RelayManager:
             f.write(json.dumps(obj, ensure_ascii=False) + "\n")
             f.flush()
 
-    # ---- inbox (players -> GM) --------------------------------------------
+    # ---- inbox (players -> GM), per-source --------------------------------
 
-    def submit(self, player, text, seat=None):
-        """Append a player's action to the inbox. Called by the relay server."""
-        rec = {"id": self._last_id(self.inbox) + 1, "ts": _now_iso(),
+    def _inbox_path(self, source):
+        return self.relay_dir / f"inbox-{_slug(source) or 'web'}.jsonl"
+
+    def _inbox_files(self):
+        """(source, path) for every per-source inbox file present."""
+        out = []
+        for p in sorted(self.relay_dir.glob("inbox-*.jsonl")):
+            out.append((p.stem[len("inbox-"):], p))
+        return out
+
+    def submit(self, player, text, seat=None, source="web"):
+        """Append a player's action to that source's inbox. The submitting
+        front-end (web server / Discord bot) is the single writer of its file."""
+        path = self._inbox_path(source)
+        rec = {"id": self._last_id(path) + 1, "ts": _now_iso(),
                "player": player, "seat": seat or _slug(player),
-               "text": (text or "").strip()}
-        self._append(self.inbox, rec)
+               "text": (text or "").strip(), "source": _slug(source) or "web"}
+        self._append(path, rec)
         return rec
 
-    def _cursor_val(self):
+    def _cursor_map(self):
         try:
-            return int(self.cursor.read_text(encoding="utf-8").strip())
+            v = json.loads(self.cursor.read_text(encoding="utf-8"))
+            return v if isinstance(v, dict) else {}
         except (ValueError, IOError, FileNotFoundError):
-            return 0
+            return {}
 
     def pending(self):
-        """Inbox actions not yet drained (without consuming them)."""
-        cur = self._cursor_val()
-        return [r for r in self._read_lines(self.inbox) if int(r.get("id", 0)) > cur]
+        """Undrained actions across all sources, merged in time order."""
+        cur = self._cursor_map()
+        new = []
+        for source, path in self._inbox_files():
+            for r in self._read_lines(path):
+                if int(r.get("id", 0)) > int(cur.get(source, 0)):
+                    r.setdefault("source", source)
+                    new.append(r)
+        new.sort(key=lambda r: r.get("ts", ""))
+        return new
 
     def drain(self):
-        """Return new player actions and advance the cursor past them. The GM
-        calls this at the start of each beat. Single writer of the cursor file."""
+        """Return new player actions (all sources, time-ordered) and advance each
+        source's cursor past them. Single writer of the cursor file (the GM)."""
         new = self.pending()
         if new:
-            maxid = max(int(r.get("id", 0)) for r in new)
+            cur = self._cursor_map()
+            for r in new:
+                s = r.get("source", "web")
+                cur[s] = max(int(cur.get(s, 0)), int(r.get("id", 0)))
             tmp = self.cursor.with_suffix(".tmp")
-            tmp.write_text(str(maxid), encoding="utf-8")
+            tmp.write_text(json.dumps(cur), encoding="utf-8")
             tmp.replace(self.cursor)
         return new
 
@@ -303,7 +328,8 @@ def main():
         else:
             print(f"{len(new)} new player action(s):")
             for r in new:
-                print(f"  [{r.get('player')}] {r.get('text')}")
+                via = "" if r.get("source", "web") == "web" else f"  (via {r['source']})"
+                print(f"  [{r.get('player')}] {r.get('text')}{via}")
     elif args.action == "pending":
         new = m.pending()
         if json_mode:
@@ -311,7 +337,8 @@ def main():
         else:
             print(f"{len(new)} pending action(s).")
             for r in new:
-                print(f"  [{r.get('player')}] {r.get('text')}")
+                via = "" if r.get("source", "web") == "web" else f"  (via {r['source']})"
+                print(f"  [{r.get('player')}] {r.get('text')}{via}")
     elif args.action == "post":
         rec = m.post(args.text, images=[os.path.basename(i) for i in args.image])
         print(f"Posted to relay (#{rec['id']}"

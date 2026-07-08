@@ -45,10 +45,16 @@ rag = [
     "chromadb>=0.4.0",
 ]
 
+# Discord transport for online multiplayer (Phase 3)
+discord = [
+    "discord.py>=2.3.0",
+]
+
 # Full installation (all features)
 full = [
     "gm-claude[voice]",
     "gm-claude[rag]",
+    "gm-claude[discord]",
 ]
 
 # Development dependencies

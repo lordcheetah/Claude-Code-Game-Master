@@ -9,10 +9,13 @@
 # (gm-session.sh multiplayer on) and add seats (gm-party.sh add ...).
 #
 # Usage:
-#   gm-relay.sh serve [--port N] [--code WORD] [--lan]   Start the server
+#   gm-relay.sh serve [--port N] [--code WORD] [--lan]   Start the web server
 #       --lan          bind 0.0.0.0 so players on your network can reach it
 #       --code WORD    require a room code to join
 #       (reach the open internet by pointing a tunnel — cloudflared/ngrok — at it)
+#   gm-relay.sh discord   Start the Discord bot front-end (needs DISCORD_BOT_TOKEN
+#                         in .env + `uv pip install "discord.py>=2.3.0"`). Can run
+#                         alongside the web server — both feed the same GM.
 #   gm-relay.sh drain     Pull new player actions into the session (GM, each beat)
 #   gm-relay.sh pending   Show queued actions without consuming
 #   gm-relay.sh post "<narration>" [--image FILE.png ...]   Send narration to players
@@ -41,6 +44,11 @@ case "$ACTION" in
         done
         exec $PYTHON_CMD "$LIB_DIR/relay_server.py" --campaign-dir "$CDIR" \
             --host "$HOST" --port "$PORT" ${CODE:+--code "$CODE"}
+        ;;
+    discord)
+        # Discord front-end (Phase 3). Token/channel come from .env
+        # (DISCORD_BOT_TOKEN / DISCORD_CHANNEL_ID), sourced by common.sh.
+        exec $PYTHON_CMD "$LIB_DIR/relay_discord.py" "$@"
         ;;
     drain|pending|post|status|feed|say|who)
         $PYTHON_CMD "$LIB_DIR/relay_manager.py" "$ACTION" "$@"

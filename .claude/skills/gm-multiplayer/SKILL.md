@@ -116,6 +116,34 @@ does that** — retiring one seat must not evict anyone else. When a PC dies:
    (or `add` if they'd been spectating). Bridge them into the fiction.
 4. The fallen hero stays in the world's memory — referenced, mourned, avenged.
 
+## Playing online (optional — the relay)
+Local hot-seat needs nothing extra. To let players join from other machines, the
+host runs a thin relay (`tools/gm-relay.sh`) — a small self-hosted web page. It
+NEVER touches your reasoning; it just moves text between the players' browsers and
+two log files. You (one Claude Code session) stay the whole GM.
+
+Setup (host, once): `gm-session.sh multiplayer on`, add the seats
+(`gm-party.sh add ...`), then `bash tools/gm-relay.sh serve --lan --code <word>`
+and share the printed URL + room code. Players open it, pick their seat, and type.
+
+The relay-aware beat loop (this is the online expression of LOOSE timing):
+1. **Drain** the table's actions at the start of the beat:
+   `bash tools/gm-relay.sh drain` → prints queued `[player] text` lines (and
+   advances its cursor so you never re-read them). Also playable by the host at
+   the keyboard as a seat.
+2. **Wait for the table.** Remote players send actions in separate messages and
+   CANNOT batch — so gather everyone who wants in (re-`drain` as more arrive)
+   before resolving. Do not resolve one player and jump the clock; that's the
+   exact loose-timing rule, and online it's mandatory, not optional.
+3. Resolve the beat, persist per seat (below).
+4. **Post** your narration so the players see it:
+   `bash tools/gm-relay.sh post "<your narration text>" [--image <plate.png>]`.
+   Attach any Perpetua-Venn-style plate by its `images/` basename — the relay
+   serves it to remote players (who can't open a host `file://` link).
+5. `gm-relay.sh status` shows the URL, code, pending count, and seats;
+   `gm-relay.sh stop` ends it. Optional: drive the cadence with `/loop` so you
+   drain-and-respond whenever new actions arrive.
+
 ## Persist before narrating — per seat
 The golden rule still holds, now per player: resolve → persist to the acting
 player's seat (and to shared world state: NPCs, locations, facts, consequences) →

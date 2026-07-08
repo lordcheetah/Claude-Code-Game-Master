@@ -131,10 +131,14 @@ The relay-aware beat loop (this is the online expression of LOOSE timing):
    `bash tools/gm-relay.sh drain` → prints queued `[player] text` lines (and
    advances its cursor so you never re-read them). Also playable by the host at
    the keyboard as a seat.
-2. **Wait for the table.** Remote players send actions in separate messages and
-   CANNOT batch — so gather everyone who wants in (re-`drain` as more arrive)
-   before resolving. Do not resolve one player and jump the clock; that's the
-   exact loose-timing rule, and online it's mandatory, not optional.
+2. **Wait for the table — but only for who's actually there.** Run
+   `bash tools/gm-relay.sh who`: it shows each seat as ● connected / ○ unmanned /
+   ✗ fallen, and whether a connected player has ✓ acted or is still … waiting.
+   Gather every CONNECTED player who hasn't acted (re-`drain`/`who` as more
+   arrive) before resolving — do not resolve one player and jump the clock.
+   **Unmanned seats (○)** have no human this session: run that PC as a GM-voiced
+   ally or keep them offstage; never stall the beat waiting on an empty chair.
+   Online, this loose-timing gather is mandatory, not optional.
 3. Resolve the beat, persist per seat (below).
 4. **Post** your narration so the players see it:
    `bash tools/gm-relay.sh post "<your narration text>" [--image <plate.png>]`.

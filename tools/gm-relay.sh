@@ -42,7 +42,7 @@ case "$ACTION" in
         exec $PYTHON_CMD "$LIB_DIR/relay_server.py" --campaign-dir "$CDIR" \
             --host "$HOST" --port "$PORT" ${CODE:+--code "$CODE"}
         ;;
-    drain|pending|post|status|feed|say)
+    drain|pending|post|status|feed|say|who)
         $PYTHON_CMD "$LIB_DIR/relay_manager.py" "$ACTION" "$@"
         ;;
     stop)

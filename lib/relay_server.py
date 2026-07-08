@@ -131,15 +131,30 @@ function render(e){
   $('#feed').appendChild(div); window.scrollTo(0,document.body.scrollHeight);
 }
 async function poll(){
-  const r=await fetch('/feed?since='+SINCE); const d=await r.json();
-  (d.entries||[]).forEach(e=>{ SINCE=Math.max(SINCE,e.id); render(e); });
+  try{
+    const r=await fetch('/feed?since='+SINCE+'&player='+encodeURIComponent(PLAYER));
+    const d=await r.json();
+    (d.entries||[]).forEach(e=>{ SINCE=Math.max(SINCE,e.id); render(e); });
+    setConn(true);
+  }catch(_){ setConn(false); }
 }
+function setConn(ok){ $('#who').style.opacity = ok?1:.5;
+  $('#who').title = ok?'connected':'reconnecting…'; }
 async function send(){
   const t=$('#say').value.trim(); if(!t) return;
   $('#say').value='';
-  render({text:'['+PLAYER+'] '+t, mine:true});   // optimistic echo
-  await fetch('/say',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({player:PLAYER,code:CODE,text:t})});
+  const div=document.createElement('div'); div.className='msg';
+  const b=document.createElement('div'); b.className='body mine';
+  b.textContent='['+PLAYER+'] '+t; div.appendChild(b);
+  const tick=document.createElement('span'); tick.textContent=' …'; tick.style.color='#a99';
+  b.appendChild(tick); $('#feed').appendChild(div); window.scrollTo(0,document.body.scrollHeight);
+  try{
+    const r=await fetch('/say',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({player:PLAYER,code:CODE,text:t})});
+    const d=await r.json();
+    if(d.ok){ tick.textContent=' ✓'; tick.style.color='#9fce9f'; }
+    else { tick.textContent=' ✗ not sent'; tick.style.color='#e08a8a'; }
+  }catch(_){ tick.textContent=' ✗ not sent (offline)'; tick.style.color='#e08a8a'; }
 }
 $('#sayform').onsubmit=e=>{e.preventDefault();send();};
 $('#say').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
@@ -179,7 +194,14 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/seats":
             self._send({"seats": self.relay.seats(), "code_required": bool(self.code)})
         elif u.path == "/feed":
-            since = (parse_qs(u.query).get("since", ["0"]) or ["0"])[0]
+            q = parse_qs(u.query)
+            since = (q.get("since", ["0"]) or ["0"])[0]
+            # A poll doubles as a heartbeat: mark the polling seat as present.
+            who = (q.get("player", [""]) or [""])[0]
+            if who:
+                seat = self.relay.match_seat(who)
+                if seat:
+                    self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             entries = self.relay.feed(since)
             self._send({"entries": entries,
                         "last": max([e["id"] for e in entries], default=int(since or 0))})
@@ -199,6 +221,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send({"ok": False, "error": "no such seat — ask the GM to add you"}, status=400)
             if seat.get("status") != "alive":
                 return self._send({"ok": False, "error": "that character has fallen"}, status=400)
+            self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             self._send({"ok": True, "seat": seat})
         elif u.path == "/say":
             seat = self.relay.match_seat(d.get("player", ""))
@@ -207,6 +230,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send({"ok": False, "error": "no such seat"}, status=400)
             if not text:
                 return self._send({"ok": False, "error": "empty"}, status=400)
+            self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             rec = self.relay.submit(seat.get("player"), text, seat=seat.get("slug"))
             self._send({"ok": True, "id": rec["id"]})
         else:

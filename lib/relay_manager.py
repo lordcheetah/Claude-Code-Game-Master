@@ -23,6 +23,7 @@ seat the GM has created.
 import os
 import sys
 import json
+import threading
 import argparse
 from pathlib import Path
 from datetime import datetime, timezone
@@ -32,6 +33,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 def _now_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+def _age_secs(iso):
+    """Seconds since an ISO timestamp, or a large number if unparseable."""
+    try:
+        then = datetime.fromisoformat(iso)
+        if then.tzinfo is None:
+            then = then.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - then).total_seconds()
+    except (TypeError, ValueError):
+        return 1e9
 
 
 def _slug(s):
@@ -47,6 +59,11 @@ class RelayManager:
         self.cursor = self.relay_dir / "inbox.cursor"
         self.outbox = self.relay_dir / "outbox.jsonl"
         self.server_state = self.relay_dir / "server.json"
+        self.presence_file = self.relay_dir / "presence.json"
+        # Guards concurrent presence writes from the server's request threads
+        # (one process, many threads). Cross-process is fine: only the server
+        # writes presence.json; the GM side only reads it.
+        self._presence_lock = threading.Lock()
 
     @classmethod
     def for_active(cls, base_dir="world-state"):
@@ -180,11 +197,55 @@ class RelayManager:
         except FileNotFoundError:
             pass
 
+    # ---- presence (who is actually connected) -----------------------------
+
+    ACTIVE_WINDOW = 20  # seconds; clients poll every ~2s, so 20s is generous
+
+    def touch_presence(self, seat, player=None):
+        """Stamp a seat as seen just now. Called by the server on join/say/poll.
+        Single-writer file, thread-locked against the server's own threads."""
+        if not seat:
+            return
+        with self._presence_lock:
+            data = {}
+            try:
+                data = json.loads(self.presence_file.read_text(encoding="utf-8"))
+            except (IOError, json.JSONDecodeError, FileNotFoundError):
+                data = {}
+            data[seat] = {"player": player or data.get(seat, {}).get("player") or seat,
+                          "last_seen": _now_iso()}
+            tmp = self.presence_file.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(self.presence_file)
+
+    def read_presence(self):
+        try:
+            return json.loads(self.presence_file.read_text(encoding="utf-8"))
+        except (IOError, json.JSONDecodeError, FileNotFoundError):
+            return {}
+
+    def presence_view(self):
+        """Per-seat view for the GM: is a human connected, and have they acted in
+        the current (undrained) beat? 'waiting' = connected but no queued action
+        yet — the seats loose timing should wait for. Unmanned seats have no human."""
+        pres = self.read_presence()
+        pending_seats = {r.get("seat") for r in self.pending()}
+        out = []
+        for s in self.seats():
+            slug = s.get("slug")
+            seen = pres.get(slug, {}).get("last_seen")
+            connected = seen is not None and _age_secs(seen) <= self.ACTIVE_WINDOW
+            has_pending = slug in pending_seats
+            out.append({**s, "connected": connected, "last_seen": seen,
+                        "has_pending": has_pending,
+                        "waiting": connected and not has_pending and s.get("status") == "alive"})
+        return out
+
     def status(self):
         st = self.read_server_state()
         return {"server": st, "pending": len(self.pending()),
                 "outbox_count": self._last_id(self.outbox),
-                "seats": self.seats()}
+                "seats": self.seats(), "presence": self.presence_view()}
 
 
 # ------------------------------ CLI --------------------------------------
@@ -206,6 +267,7 @@ def main():
     p.add_argument("text")
 
     sub.add_parser("status", help="Server + queue status")
+    sub.add_parser("who", help="Who is connected, and who still owes an action")
     sub.add_parser("feed", help="Dump the outbox (what players have seen)")
 
     from cli_output import wants_json, strip_json_flag, emit
@@ -262,6 +324,27 @@ def main():
                     label += f" [{s['status']}]"
                 seat_bits.append(label)
             print("Seats: " + (", ".join(seat_bits) or "(none)"))
+    elif args.action == "who":
+        view = m.presence_view()
+        if json_mode:
+            emit({"presence": view}, json_mode=True)
+        else:
+            waiting = [v for v in view if v["waiting"]]
+            for v in view:
+                if v.get("status") != "alive":
+                    dot, note = "✗", "fallen"
+                elif not v["connected"]:
+                    dot, note = "○", "unmanned — GM-run or offstage"
+                elif v["has_pending"]:
+                    dot, note = "●", "✓ acted this beat"
+                else:
+                    dot, note = "●", "… waiting on their action"
+                print(f"  {dot} {v['player']} → {v.get('character') or '(no character)'}   {note}")
+            if waiting:
+                print(f"\nLoose timing: still waiting on {', '.join(v['player'] for v in waiting)} "
+                      f"before you resolve the beat.")
+            else:
+                print("\nEveryone connected has acted — safe to resolve the beat.")
     elif args.action == "feed":
         for r in m.feed(0):
             tag = r.get("kind", "narration")

@@ -50,6 +50,11 @@ CLIENT_HTML = """<!doctype html>
            display:flex; gap:.75rem; align-items:center; }
   header b { color:#e8c584; letter-spacing:.02em; }
   #who { margin-left:auto; font-size:.85rem; color:#a99; }
+  #prefs { padding:.4rem 1rem; background:#191510; border-bottom:1px solid #3a3226;
+           font-size:.82rem; color:#b9a; max-width:760px; margin:0 auto; }
+  #prefs select { background:#0f0d0a; color:#eae3d6; border:1px solid #4a4030;
+           border-radius:5px; padding:.12rem .3rem; font:inherit; }
+  #prefok { color:#9fce9f; margin-left:.4rem; }
   #feed { padding:1rem; max-width:760px; margin:0 auto; }
   .msg { margin:0 0 1.1rem; }
   .msg .body { white-space:pre-wrap; }
@@ -84,6 +89,15 @@ CLIENT_HTML = """<!doctype html>
 
 <div id="table" style="display:none">
   <header><b>THE TABLE</b> <span id="who"></span></header>
+  <div id="prefs">If I'm away:
+    <select id="policy">
+      <option value="write-out">write me out of the story</option>
+      <option value="gm">the GM runs my character</option>
+      <option value="delegate">another player runs my character</option>
+    </select>
+    <select id="deleg" style="display:none"></select>
+    <span id="prefok"></span>
+  </div>
   <div id="feed"></div>
   <form id="sayform">
     <textarea id="say" placeholder="What does your character do? (Enter to send)"></textarea>
@@ -92,15 +106,15 @@ CLIENT_HTML = """<!doctype html>
 </div>
 
 <script>
-let PLAYER=null, CODE="", SINCE=0, codeRequired=false;
+let PLAYER=null, CODE="", SINCE=0, codeRequired=false, SEATS=[];
 const $=s=>document.querySelector(s);
 
 async function loadSeats(){
   const r=await fetch('/seats'); const d=await r.json();
-  codeRequired=d.code_required;
+  codeRequired=d.code_required; SEATS=d.seats||[];
   if(codeRequired){ $('#code').style.display='block'; $('#codelbl').style.display='block'; }
   const sel=$('#seat'); sel.innerHTML='';
-  (d.seats||[]).filter(s=>s.status==='alive').forEach(s=>{
+  SEATS.filter(s=>s.status==='alive').forEach(s=>{
     const o=document.createElement('option');
     o.value=s.player; o.textContent=s.player+' — '+(s.character||'(no character yet)');
     sel.appendChild(o);
@@ -109,6 +123,29 @@ async function loadSeats(){
     o.textContent='(no seats yet — the GM must add them)'; o.disabled=true; sel.appendChild(o); }
 }
 loadSeats();
+
+function initPrefs(seat){
+  const pol=(seat&&seat.absence_policy)||{mode:'write-out'};
+  $('#policy').value=pol.mode||'write-out';
+  const dsel=$('#deleg'); dsel.innerHTML='';
+  SEATS.filter(s=>s.player!==PLAYER&&s.status==='alive').forEach(s=>{
+    const o=document.createElement('option'); o.value=s.player; o.textContent=s.player; dsel.appendChild(o);
+  });
+  if(pol.mode==='delegate'&&pol.to_player) dsel.value=pol.to_player;
+  syncDeleg();
+  $('#policy').onchange=()=>{ syncDeleg(); savePolicy(); };
+  $('#deleg').onchange=savePolicy;
+}
+function syncDeleg(){ $('#deleg').style.display = $('#policy').value==='delegate' ? 'inline-block':'none'; }
+async function savePolicy(){
+  const mode=$('#policy').value, to=$('#deleg').value;
+  if(mode==='delegate'&&!to) return;
+  const r=await fetch('/prefs',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({player:PLAYER,code:CODE,mode,to})});
+  const d=await r.json();
+  $('#prefok').textContent = d.ok ? 'saved ✓' : ('✗ '+(d.error||''));
+  setTimeout(()=>{$('#prefok').textContent='';}, 1500);
+}
 
 $('#joinbtn').onclick=async()=>{
   const player=$('#seat').value, code=$('#code').value.trim();
@@ -119,6 +156,7 @@ $('#joinbtn').onclick=async()=>{
   PLAYER=player; CODE=code;
   $('#join').style.display='none'; $('#table').style.display='block';
   $('#who').textContent=player+' → '+(d.seat&&d.seat.character||'');
+  initPrefs(d.seat);
   poll(); setInterval(poll, 2000);
 };
 
@@ -233,6 +271,17 @@ class Handler(BaseHTTPRequestHandler):
             self.relay.touch_presence(seat.get("slug"), seat.get("player"))
             rec = self.relay.submit(seat.get("player"), text, seat=seat.get("slug"))
             self._send({"ok": True, "id": rec["id"]})
+        elif u.path == "/prefs":
+            # A player sets their own standing absence preference.
+            seat = self.relay.match_seat(d.get("player", ""))
+            if not seat:
+                return self._send({"ok": False, "error": "no such seat"}, status=400)
+            try:
+                updated = self.relay.set_absence_policy(
+                    seat.get("player"), d.get("mode", "write-out"), delegate_to=d.get("to"))
+            except Exception as e:
+                return self._send({"ok": False, "error": str(e)}, status=400)
+            self._send({"ok": True, "policy": updated.get("absence_policy")})
         else:
             self._send({"error": "not found"}, status=404)
 

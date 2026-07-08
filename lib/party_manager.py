@@ -119,6 +119,10 @@ class PartyManager:
         if seat is None:
             seat = {"player": player.strip(), "character": character or "",
                     "slug": slug, "status": "alive", "control": "self",
+                    # The player's standing wish for how to handle their absence.
+                    # Defaults to a GM write-out; the player can change it (from
+                    # their own client, or the GM on their behalf) to gm/delegate.
+                    "absence_policy": {"mode": "write-out"},
                     "joined": _now_iso()}
             roster["seats"].append(seat)
         else:
@@ -249,6 +253,55 @@ class PartyManager:
         self._save(roster)
         return seat
 
+    def get_policy(self, who: str) -> dict:
+        """The player's standing absence preference (defaults to write-out)."""
+        roster = self._load()
+        seat = self._find(roster, who)
+        if seat is None:
+            raise ValueError(f"no seat for '{who}'")
+        pol = seat.get("absence_policy") or {"mode": "write-out"}
+        return pol
+
+    def set_absence_policy(self, who: str, mode: str, delegate_to: str = None,
+                           reason: str = None) -> dict:
+        """Set the PLAYER's standing wish for how their absence is handled:
+          'write-out' (default) — GM writes the PC out of the fiction
+          'gm'                  — GM runs the PC as a party NPC
+          'delegate'            — a named other player runs it (delegate_to)
+        This is a preference, not the live state; `away` (no override) applies it."""
+        roster = self._load()
+        seat = self._find(roster, who)
+        if seat is None:
+            raise ValueError(f"no seat for '{who}'")
+        if mode in ("write-out", "writeout", "away"):
+            pol = {"mode": "write-out"}
+            if reason:
+                pol["reason"] = reason
+        elif mode == "gm":
+            pol = {"mode": "gm"}
+        elif mode == "delegate":
+            d = self._find(roster, delegate_to or "")
+            if d is None:
+                raise ValueError(f"no seat to delegate to: '{delegate_to}'")
+            if d["slug"] == seat["slug"]:
+                raise ValueError("cannot delegate a seat to itself")
+            pol = {"mode": "delegate", "to": d["slug"], "to_player": d.get("player")}
+        else:
+            raise ValueError(f"unknown absence policy: {mode}")
+        seat["absence_policy"] = pol
+        self._save(roster)
+        return seat
+
+    def apply_absence(self, who: str) -> dict:
+        """Put a player 'away' using THEIR stored preference (the default path)."""
+        pol = self.get_policy(who)
+        mode = pol.get("mode", "write-out")
+        if mode == "gm":
+            return self.set_control(who, "gm")
+        if mode == "delegate":
+            return self.set_control(who, "delegate", delegate_to=pol.get("to"))
+        return self.set_control(who, "away", reason=pol.get("reason"))
+
     def list_seats(self) -> dict:
         return self._load()
 
@@ -338,13 +391,21 @@ def main():
     p_sheet.add_argument("who", help="Player name or slug")
     p_sheet.add_argument("json", help="Character sheet JSON")
 
-    p_away = sub.add_parser("away", help="Handle an absent player (leave / miss a session)")
+    p_away = sub.add_parser("away", help="Mark a player away (applies THEIR policy unless overridden)")
     p_away.add_argument("who", help="Player name or slug going away")
-    g = p_away.add_mutually_exclusive_group(required=True)
-    g.add_argument("--gm", action="store_true", help="GM runs their PC as a party NPC")
-    g.add_argument("--to", metavar="PLAYER", help="Delegate their PC to another player")
-    g.add_argument("--write-out", action="store_true", help="Write the PC out of the fiction")
+    g = p_away.add_mutually_exclusive_group(required=False)
+    g.add_argument("--gm", action="store_true", help="Override: GM runs their PC as a party NPC")
+    g.add_argument("--to", metavar="PLAYER", help="Override: delegate their PC to another player")
+    g.add_argument("--write-out", action="store_true", help="Override: write the PC out of the fiction")
     p_away.add_argument("--reason", help="In-fiction excuse for a write-out")
+
+    p_pol = sub.add_parser("policy", help="Set a PLAYER's standing choice for how their absence is handled")
+    p_pol.add_argument("who", help="Player name or slug")
+    gp = p_pol.add_mutually_exclusive_group(required=True)
+    gp.add_argument("--write-out", action="store_true", help="Default: GM writes them out")
+    gp.add_argument("--gm", action="store_true", help="GM runs their PC as a party NPC")
+    gp.add_argument("--to", metavar="PLAYER", help="A named other player runs it")
+    p_pol.add_argument("--reason", help="Preferred in-fiction excuse for a write-out")
 
     p_back = sub.add_parser("back", help="A player returns; they run their own PC again")
     p_back.add_argument("who", help="Player name or slug returning")
@@ -388,16 +449,41 @@ def main():
         ok = mgr.set_sheet(args.who, args.json)
         print("Sheet saved." if ok else "Failed to save sheet.")
     elif args.action == "away":
+        char = None
         if args.gm:
             seat = mgr.set_control(args.who, "gm")
             print(f"{seat['player']} is away — the GM now runs {seat.get('character') or seat['slug']} as a party NPC.")
         elif args.to:
             seat = mgr.set_control(args.who, "delegate", delegate_to=args.to)
             print(f"{seat['player']} is away — {args.to} now runs {seat.get('character') or seat['slug']}.")
-        else:
+        elif args.write_out:
             seat = mgr.set_control(args.who, "away", reason=args.reason)
             print(f"{seat['player']} is away — {seat.get('character') or seat['slug']} is written offscreen"
                   + (f": {args.reason}" if args.reason else ".") )
+        else:
+            # No override — apply the player's own standing preference.
+            seat = mgr.apply_absence(args.who)
+            ctl = seat.get("control")
+            char = seat.get("character") or seat["slug"]
+            if ctl == "gm":
+                print(f"{seat['player']} is away — by their choice, the GM runs {char} as a party NPC.")
+            elif ctl == "delegate":
+                who_by = {s['slug']: s['player'] for s in mgr.list_seats().get('seats', [])}
+                print(f"{seat['player']} is away — by their choice, {who_by.get(seat.get('controlled_by'),'?')} runs {char}.")
+            else:
+                print(f"{seat['player']} is away — by their choice, {char} is written offscreen"
+                      + (f": {seat.get('absence_reason')}" if seat.get('absence_reason') else "."))
+    elif args.action == "policy":
+        if args.gm:
+            seat = mgr.set_absence_policy(args.who, "gm")
+            print(f"{seat['player']}'s choice when away: the GM runs their character.")
+        elif args.to:
+            seat = mgr.set_absence_policy(args.who, "delegate", delegate_to=args.to)
+            print(f"{seat['player']}'s choice when away: {args.to} runs their character.")
+        else:
+            seat = mgr.set_absence_policy(args.who, "write-out", reason=args.reason)
+            print(f"{seat['player']}'s choice when away: the GM writes them out"
+                  + (f" ({args.reason})" if args.reason else ".") )
     elif args.action == "back":
         seat = mgr.set_control(args.who, "self")
         print(f"Welcome back — {seat['player']} runs {seat.get('character') or seat['slug']} again.")

@@ -41,17 +41,21 @@ character:
   (or `add` then have them build a PC via `create-character` and
   `gm-party.sh sheet ...`). Then BRIDGE them into the fiction — a new arrival, a
   reinforcement, someone who was here all along — don't just pop them onstage.
-- **Leave mid-session / absent for a session:** ask the leaving player (or the
-  table) HOW they want their character handled, then set it. Three choices:
-  1. **GM runs it as a party NPC** — `gm-party.sh away "<player>" --gm`. The PC
-     stays in the scene; you voice them, but keep them supportive, not
-     spotlight-stealing (they're someone else's hero).
-  2. **Another player runs it** — `gm-party.sh away "<player>" --to "<other player>"`.
-     That player now declares its actions too; resolve them on the absent seat
-     (`gm-player.sh ... --player "<absent player>"`).
-  3. **Write them out** — `gm-party.sh away "<player>" --write-out --reason "<excuse>"`.
-     The PC exits the fiction with an in-world reason (called away, taken ill,
-     following another lead). They're offscreen until they return.
+- **Leave mid-session / absent for a session:** each player owns a standing
+  choice for how THEIR absence is handled — they set it themselves (there's an
+  "If I'm away" selector on the relay client), or the GM sets it for them with
+  `gm-party.sh policy "<player>" --write-out | --gm | --to "<other>"`. The default
+  is **write-out**. When the player is actually gone, just run
+  **`gm-party.sh away "<player>"`** — it applies THEIR choice:
+  1. **write-out** (default) — the PC exits the fiction with an in-world reason
+     (called away, taken ill, chasing another lead); offscreen until they return.
+  2. **gm** — the PC stays in the scene and you voice them as a party NPC; keep
+     them supportive, not spotlight-stealing (it's someone else's hero).
+  3. **delegate** — the named other player runs the PC; resolve its actions on
+     the absent seat (`gm-player.sh ... --player "<absent player>"`).
+  (You can still override for one instance: `away "<player>" --gm|--to|--write-out`.)
+  `gm-relay.sh who` shows a disconnected player's stored choice so you can honor
+  it without asking.
 - **They come back:** `gm-party.sh back "<player>"` — they resume their own PC;
   bridge them back into the scene.
 

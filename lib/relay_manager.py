@@ -171,8 +171,16 @@ class RelayManager:
                  "character": s.get("character"), "status": s.get("status", "alive"),
                  "control": s.get("control", "self"),
                  "controlled_by": s.get("controlled_by"),
-                 "absence_reason": s.get("absence_reason")}
+                 "absence_reason": s.get("absence_reason"),
+                 "absence_policy": s.get("absence_policy") or {"mode": "write-out"}}
                 for s in roster.get("seats", [])]
+
+    def set_absence_policy(self, who, mode, delegate_to=None, reason=None):
+        """Set a player's standing absence preference (used by the /prefs endpoint
+        so players choose from their own client). Delegates to PartyManager."""
+        from party_manager import PartyManager
+        return PartyManager(str(self.campaign_dir)).set_absence_policy(
+            who, mode, delegate_to=delegate_to, reason=reason)
 
     def match_seat(self, who):
         """Resolve a joining name to a seat (by player name, slug, or character)."""
@@ -349,7 +357,12 @@ def main():
                 elif control == "away":
                     dot, note = "○", f"offscreen — {v.get('absence_reason') or 'absent'}"
                 elif not v["connected"]:
-                    dot, note = "○", "not connected — set away? (gm-party.sh away ...)"
+                    pol = v.get("absence_policy") or {"mode": "write-out"}
+                    pm = pol.get("mode", "write-out")
+                    pref = ("GM-run" if pm == "gm"
+                            else f"run by {by_slug.get(pol.get('to'), pol.get('to_player','?'))}"
+                            if pm == "delegate" else "write out")
+                    dot, note = "○", f"not connected — their choice: {pref}  (apply: gm-party.sh away \"{v['player']}\")"
                 elif v["has_pending"]:
                     dot, note = "●", "✓ acted this beat"
                 else:

@@ -221,9 +221,17 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    MAX_BODY = 1024 * 1024  # 1 MB — player actions/joins are tiny; cap to blunt DoS
+
     def _body(self):
         try:
             n = int(self.headers.get("Content-Length", 0))
+            if n <= 0 or n > self.MAX_BODY:
+                if n > self.MAX_BODY:
+                    # We refuse to read an oversized body; close the connection so
+                    # the unread bytes can't corrupt the next keep-alive request.
+                    self.close_connection = True
+                return {}
             return json.loads(self.rfile.read(n) or b"{}")
         except (ValueError, json.JSONDecodeError):
             return {}

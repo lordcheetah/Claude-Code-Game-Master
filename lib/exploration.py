@@ -58,9 +58,18 @@ def held_abilities(char: dict) -> set:
     return held
 
 
-def _requires(edge) -> list:
+def _requires_raw(edge) -> list:
+    """The edge's requirement list in ORIGINAL form, tolerating a bare string
+    (`requires: "morph_ball"`) as a one-element list so a hand-authored gate is
+    never silently bypassed."""
     r = edge.get("requires") if isinstance(edge, dict) else None
-    return [ability_key(x) for x in r if ability_key(x)] if isinstance(r, list) else []
+    if isinstance(r, str):
+        r = [r]
+    return list(r) if isinstance(r, list) else []
+
+
+def _requires(edge) -> list:
+    return [ability_key(x) for x in _requires_raw(edge) if ability_key(x)]
 
 
 def _satisfied(req_key: str, held_tokensets: list) -> bool:
@@ -81,8 +90,7 @@ def edge_passable(edge, held: set) -> bool:
 
 def missing_for_edge(edge, held: set) -> list:
     hts = _held_tokensets(held)
-    reqs = edge.get("requires") if isinstance(edge, dict) else None
-    reqs = reqs if isinstance(reqs, list) else []
+    reqs = _requires_raw(edge)
     # return the ORIGINAL requirement strings that aren't satisfied (nicer for display)
     out = []
     for orig in reqs:
@@ -209,10 +217,16 @@ def main():
                 print("\nNothing gated on the immediate frontier.")
 
     elif args.action == "gained":
-        before = set(held)
         gained_key = ability_key(args.ability)
-        # held-before = held minus the gained ability (token-superset removal)
-        before = {h for h in held if not set(gained_key.split()).issubset(set(h.split()))}
+        # held-before = held minus the gained ability. Prefer an EXACT match so a
+        # broader held ability isn't wrongly stripped (gaining "bombs" must not
+        # remove a held "power bombs"); only fall back to token-superset removal
+        # when the gained ability is held under a longer name (gained "missile"
+        # held as "missile launcher ...").
+        if gained_key in held:
+            before = held - {gained_key}
+        else:
+            before = {h for h in held if not set(gained_key.split()).issubset(set(h.split()))}
         opened = newly_reachable(locations, start, before, held)
         if json_mode:
             emit({"ability": args.ability, "from": start, "opened": opened}, json_mode=True)

@@ -93,22 +93,40 @@ class RelayManager:
                 continue
         return out
 
+    # Guards every append (and the read-id+append in submit) so the web server's
+    # ThreadingHTTPServer request threads can't interleave a torn line or race the
+    # id counter. Reentrant so submit() can hold it across a nested _append().
+    _write_lock = threading.RLock()
+
     @staticmethod
     def _last_id(path):
-        last = 0
-        for rec in RelayManager._read_lines(path):
+        # The log is append-only with monotonic ids, so the last parseable line
+        # carries the max id — read from the end instead of parsing every line
+        # (which made submit O(N) and the whole log O(N^2)).
+        if not path.exists():
+            return 0
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (IOError, OSError):
+            return 0
+        for line in reversed(lines):
+            line = line.strip()
+            if not line:
+                continue
             try:
-                last = max(last, int(rec.get("id", 0)))
-            except (TypeError, ValueError):
-                pass
-        return last
+                return int(json.loads(line).get("id", 0))
+            except (json.JSONDecodeError, AttributeError, TypeError, ValueError):
+                # tolerate a torn trailing line; fall back to the previous one
+                continue
+        return 0
 
     @staticmethod
     def _append(path, obj):
-        # One complete line, one write — atomic enough for a single-writer log.
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(obj, ensure_ascii=False) + "\n")
-            f.flush()
+        # One complete line, one write — locked against concurrent server threads.
+        with RelayManager._write_lock:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+                f.flush()
 
     # ---- inbox (players -> GM), per-source --------------------------------
 
@@ -126,10 +144,13 @@ class RelayManager:
         """Append a player's action to that source's inbox. The submitting
         front-end (web server / Discord bot) is the single writer of its file."""
         path = self._inbox_path(source)
-        rec = {"id": self._last_id(path) + 1, "ts": _now_iso(),
-               "player": player, "seat": seat or _slug(player),
-               "text": (text or "").strip(), "source": _slug(source) or "web"}
-        self._append(path, rec)
+        # id assignment + append as one critical section: two concurrent web
+        # submits must not read the same _last_id and mint a duplicate id.
+        with self._write_lock:
+            rec = {"id": self._last_id(path) + 1, "ts": _now_iso(),
+                   "player": player, "seat": seat or _slug(player),
+                   "text": (text or "").strip(), "source": _slug(source) or "web"}
+            self._append(path, rec)
         return rec
 
     def _cursor_map(self):
@@ -272,10 +293,13 @@ class RelayManager:
                 tmp.replace(self.presence_file)
 
     def read_presence(self):
-        try:
-            return json.loads(self.presence_file.read_text(encoding="utf-8"))
-        except (IOError, json.JSONDecodeError, FileNotFoundError):
-            return {}
+        # Lock-guarded against the server's own touch/clear writers so a read can't
+        # catch a half-written file (notably a Windows sharing violation).
+        with self._presence_lock:
+            try:
+                return json.loads(self.presence_file.read_text(encoding="utf-8"))
+            except (IOError, json.JSONDecodeError, FileNotFoundError):
+                return {}
 
     def presence_view(self):
         """Per-seat view for the GM: is a human connected, and have they acted in

@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).parent))
 
 from json_ops import JsonOperations
-from character_schema import to_flat
+from character_schema import to_flat, hp_current_max
 
 
 def _slugify(name: str) -> str:
@@ -147,7 +147,11 @@ class PartyManager:
         seat = self._find(roster, who)
         slug = seat["slug"] if seat else _slugify(who)
         if isinstance(character_json, str):
-            data = json.loads(character_json)
+            try:
+                data = json.loads(character_json)
+            except json.JSONDecodeError:
+                print("[ERROR] Invalid JSON provided for character sheet")
+                return False
         else:
             data = character_json
         (self.players_dir / slug).mkdir(parents=True, exist_ok=True)
@@ -376,13 +380,8 @@ class PartyManager:
                     any_absent = True
                     bits.append(f"[player away — run by {who_by_slug.get(seat.get('controlled_by'), '?')}]")
                 # hp is stored as a scalar in some kits, a {current,max} dict in
-                # others — read both shapes so the bar renders either way.
-                raw_hp = sheet.get("hp")
-                if isinstance(raw_hp, dict):
-                    cur, mx = raw_hp.get("current"), raw_hp.get("max")
-                else:
-                    cur = raw_hp
-                    mx = sheet.get("max_hp") or sheet.get("hp_max")
+                # others — reuse the shared reader so both shapes render.
+                cur, mx = hp_current_max(sheet)
                 bar = _hp_bar(cur, mx)
                 if bar:
                     bits.append(bar)

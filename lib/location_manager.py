@@ -117,6 +117,10 @@ class LocationManager(EntityManager):
         if from_loc not in locations or to_loc not in locations:
             print(f"[ERROR] Location not found: {from_loc if from_loc not in locations else to_loc}")
             return False
+        # tolerate a bare string ("morph_ball") as a one-element list so it isn't
+        # iterated character-by-character into ["m","o","r",...]
+        if isinstance(requires, str):
+            requires = [requires]
         req = [r for r in (requires or []) if r] if requires else []
 
         def _apply(edges, dest):

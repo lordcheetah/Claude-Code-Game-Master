@@ -81,19 +81,39 @@ def run(token, channel_id=None):
             try:
                 if state["channel_id"]:
                     ch = client.get_channel(state["channel_id"])
+                    if ch is None:
+                        # get_channel only hits the local cache; on a cold start
+                        # (cache not yet populated) fall back to a REST fetch.
+                        try:
+                            ch = await client.fetch_channel(state["channel_id"])
+                        except Exception:
+                            ch = None
                     if ch:
                         for e in relay.feed(state["since"]):
-                            state["since"] = max(state["since"], e["id"])
                             files = []
                             for fn in e.get("images", []):
                                 p = relay.campaign_dir / "images" / fn
                                 if p.is_file():
                                     files.append(discord.File(str(p)))
+                            # An entry with no text AND no images can't be sent
+                            # (Discord rejects an empty message). Skip it — otherwise
+                            # its send fails forever and 'since' never advances,
+                            # deadlocking the relay on a 2s retry loop.
+                            if not (e.get("text") or "").strip() and not files:
+                                state["since"] = max(state["since"], e["id"])
+                                continue
                             parts = _chunks(e.get("text", ""))
-                            for i, part in enumerate(parts):
-                                # attach images only to the last chunk
-                                await ch.send(content=part or None,
-                                              files=(files or None) if i == len(parts) - 1 else None)
+                            try:
+                                for i, part in enumerate(parts):
+                                    # attach images only to the last chunk
+                                    await ch.send(content=part or None,
+                                                  files=(files or None) if i == len(parts) - 1 else None)
+                                # advance ONLY after the whole entry sent, so a
+                                # failed relay is retried next tick, not dropped.
+                                state["since"] = max(state["since"], e["id"])
+                            except Exception as ex:
+                                sys.stderr.write(f"[discord send] {ex}\n")
+                                break
             except Exception as ex:  # keep the loop alive
                 sys.stderr.write(f"[discord pump] {ex}\n")
             await asyncio.sleep(2)
@@ -103,6 +123,8 @@ def run(token, channel_id=None):
         if msg.author == client.user:
             return
         content = (msg.content or "").strip()
+        if not content:
+            return  # attachment-only / system message — nothing to command or act on
         # Bind to the first channel a command is used in, if not preconfigured.
         if state["channel_id"] is None and content.startswith("!"):
             state["channel_id"] = msg.channel.id

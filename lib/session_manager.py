@@ -25,7 +25,8 @@ class SessionManager(EntityManager):
     # opts a campaign into multi-PC play (several human players as peers, seat state
     # under players/<slug>/); OFF by default so single-player is unchanged. Stored
     # under overview.preferences; surfaced in get_full_context so the GM honors it.
-    DEFAULT_PREFERENCES = {"action_menu": True, "multiplayer": False}
+    DEFAULT_PREFERENCES = {"action_menu": True, "multiplayer": False,
+                           "record_narration": True}
 
     def __init__(self, world_state_dir: str = None):
         super().__init__(world_state_dir)
@@ -458,6 +459,17 @@ class SessionManager(EntityManager):
             lines.append("Play style: action menu OFF — end beats with an open prompt; do "
                          "NOT list numbered choices. The player drives freely. "
                          "(Toggle: /gm choices on|off)")
+
+        # --- Narration recording (for the chronicle ebook) ---
+        if self.get_preferences().get("record_narration", True):
+            lines.append("Record narration: ON — after persisting a beat, save its NARRATIVE "
+                         "prose (the story as told, NOT the status bar or the numbered menu) "
+                         "with `bash tools/gm-narrate.sh record \"<prose>\"`. This is what the "
+                         "chronicle ebook is built from. If the beat generated a plate, add "
+                         "`--image <file.png>`. (Toggle: gm-session.sh record on|off)")
+        else:
+            lines.append("Record narration: OFF — do not call gm-narrate.sh; the chronicle "
+                         "will fall back to session summaries. (Enable: gm-session.sh record on)")
 
         # --- Multiplayer (multi-PC table): only when the campaign opts in ---
         if self.get_preferences().get("multiplayer", False):
@@ -1041,6 +1053,12 @@ def main():
                            choices=['on', 'off', 'toggle', 'show'],
                            help='on | off | toggle | show (default: show)')
 
+    rec_parser = subparsers.add_parser('record',
+                                       help='Toggle recording played narration for the chronicle ebook')
+    rec_parser.add_argument('value', nargs='?', default='show',
+                            choices=['on', 'off', 'toggle', 'show'],
+                            help='on | off | toggle | show (default: show)')
+
     from cli_output import wants_json, strip_json_flag, emit
     json_mode = wants_json()
     args = parser.parse_args(strip_json_flag(sys.argv[1:]))
@@ -1141,6 +1159,21 @@ def main():
         else:
             print(f"Multiplayer turned {state}. "
                   f"{'Several human PCs share this table; manage seats with gm-party.sh.' if current else 'Back to single-player; the campaign character.json is the active PC.'}")
+
+    elif args.action == 'record':
+        val = getattr(args, 'value', 'show')
+        current = manager.get_preferences().get('record_narration', True)
+        if val != 'show':
+            new = (not current) if val == 'toggle' else (val == 'on')
+            manager.set_preference('record_narration', new)
+            current = new
+        state = 'on' if current else 'off'
+        if val == 'show':
+            print(f"Narration recording is {state}.")
+        else:
+            print(f"Narration recording turned {state}. "
+                  + ("The GM will save each beat's prose for the chronicle ebook."
+                     if current else "The chronicle will fall back to session summaries."))
 
 
 if __name__ == "__main__":

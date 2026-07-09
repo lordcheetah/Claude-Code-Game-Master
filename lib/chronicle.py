@@ -3,10 +3,14 @@
 chronicle.py — compile a played campaign into an illustrated ebook.
 
 Assembles a Markdown manuscript from the campaign's OWN recorded material
-(session-log summaries, the chronicler's image plates, the character sheet,
-the NPC roster, and the world bible's voice), ready for pandoc to bind into an
-EPUB. Deterministic: it arranges what play already produced — it does not invent
-prose. The narrative spine is the session-log summaries written at each save.
+(the played narration recorded beat-by-beat in narration-log.jsonl, the
+chronicler's image plates, the character sheet, the NPC roster, and the world
+bible's voice), ready for pandoc to bind into an EPUB. Deterministic: it
+arranges what play already produced — it does not invent prose. The narrative
+spine is the recorded narration; each chapter is a session, with plates dropped
+in where they were generated. Sessions with no recorded prose (played before
+narration recording, or with it toggled off) fall back to their session-log
+summary, so old campaigns still compile.
 
 Usage:
     python lib/chronicle.py <campaign_dir> --out <chronicle.md> [--cover N]
@@ -19,6 +23,7 @@ import re
 import sys
 import argparse
 from pathlib import Path
+from datetime import datetime, timezone
 
 
 def _load(path, default=None):
@@ -35,24 +40,77 @@ def _read(path, default=""):
         return default
 
 
+def _parse_ts(s):
+    """Parse the timestamp forms used across the campaign into a UTC datetime:
+    the image gen-log's ISO 'Z' form, session-log's 'YYYY-MM-DD HH:MM:SS UTC',
+    and narration-log's ISO. Returns None if unparseable."""
+    if not s:
+        return None
+    s = str(s).strip()
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S UTC",
+                "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+        except ValueError:
+            continue
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    except Exception:
+        return None
+
+
+_FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+
+
+def _clean_prose(text):
+    """Light scrub of the recorded beat for print: drop fenced code blocks (the
+    status-bar / HP-bar headers are always fenced) and collapse runs of blank
+    lines. The GM is asked to record prose sans menu, so this is just a net."""
+    text = _FENCE_RE.sub("", text or "")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def load_beats(campaign_dir):
+    """Recorded narration beats (with parsed ts) in chronological order."""
+    path = Path(campaign_dir) / "narration-log.jsonl"
+    beats = []
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                b = json.loads(line)
+            except Exception:
+                continue
+            b["_dt"] = _parse_ts(b.get("ts"))
+            beats.append(b)
+    return beats
+
+
 def parse_sessions(log_text):
-    """Extract ended sessions from session-log.md as ordered chapters."""
+    """Extract ended sessions from session-log.md as ordered chapters, each with
+    the session-end timestamp used to bucket beats/plates into the right chapter."""
     sessions = []
     # Each ended block: "### Session Ended: <ts>\n<summary>\n\n**Session:** N ..."
-    blocks = re.split(r"^### Session Ended:.*$", log_text, flags=re.MULTILINE)[1:]
-    for b in blocks:
+    heads = list(re.finditer(r"^### Session Ended:\s*(.*)$", log_text, flags=re.MULTILINE))
+    for i, h in enumerate(heads):
+        start = h.end()
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(log_text)
+        b = log_text[start:end]
         # summary = text up to the first **Field:** line
         m = re.search(r"\*\*Session:\*\*", b)
         summary = (b[: m.start()] if m else b).strip()
-        num = _field(b, "Session")
-        loc = _field(b, "Location")
-        cliff = _field(b, "Cliffhanger")
         # strip a trailing horizontal rule / stray markers
         summary = re.sub(r"\n-{3,}\s*$", "", summary).strip()
-        if not summary:
-            continue
-        sessions.append({"num": num, "location": loc, "cliffhanger": cliff,
-                         "summary": summary})
+        sessions.append({"num": _field(b, "Session"),
+                         "location": _field(b, "Location"),
+                         "cliffhanger": _field(b, "Cliffhanger"),
+                         "summary": summary,
+                         "end_dt": _parse_ts(h.group(1))})
     return sessions
 
 
@@ -74,7 +132,8 @@ def load_plates(campaign_dir):
             f = d.get("file")
             if f and (campaign_dir / "images" / f).exists():
                 plates.append({"file": f, "title": d.get("title", "").strip(),
-                               "chronicler": d.get("chronicler", "").strip()})
+                               "chronicler": d.get("chronicler", "").strip(),
+                               "_dt": _parse_ts(d.get("ts"))})
     return plates
 
 
@@ -102,6 +161,7 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
     facts = _load(campaign_dir / "facts.json", {}) or {}
     plates = load_plates(campaign_dir)
     sessions = parse_sessions(_read(campaign_dir / "session-log.md"))
+    beats = load_beats(campaign_dir)
 
     title = (overview.get("campaign_name") or bible.get("name")
              or campaign_dir.name.replace("-", " ").title())
@@ -190,29 +250,90 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
         a("")
         a("---\n")
 
-    # --- Chapters (session summaries), with plates interleaved ---
-    n_ch = max(1, len(sessions))
-    # distribute plates across chapters in creation order
-    plate_for = {i: [] for i in range(n_ch)}
-    if plates and sessions:
-        for idx, pl in enumerate(plates):
-            plate_for[min(idx * n_ch // max(1, len(plates)), n_ch - 1)].append(pl)
+    # --- Chapters: recorded narration prose, plates interleaved where made ---
+    #
+    # A chapter is a session. Beats and plates are bucketed into the session
+    # whose end-timestamp first follows them; anything after the last saved
+    # session falls into a trailing "current" chapter so a mid-campaign
+    # chronicle still captures unsaved play. Within a chapter, beats and plates
+    # are merged by timestamp, so an image lands right where it was generated.
+    # When a session has no recorded beats (played before this feature, or
+    # recording was off), the chapter falls back to its end-of-session summary.
 
-    if sessions:
+    def _bucket(dt):
+        """Index of the session this timestamp belongs to (len(sessions) = the
+        trailing current chapter). Undated items sort to the trailing chapter."""
+        if dt is None:
+            return len(sessions)
         for i, s in enumerate(sessions):
-            head = f"Chapter {i + 1}"
-            if s["location"]:
-                head += f" — {s['location']}"
-            a(f"# {head}\n")
-            a(esc(s["summary"]) + "\n")
-            if s["cliffhanger"]:
-                a(f"\n*{esc(s['cliffhanger'])}*\n")
-            for pl in plate_for.get(i, []):
+            end = s.get("end_dt")
+            if end is None or dt <= end:
+                return i
+        return len(sessions)
+
+    n_chapters = len(sessions) + (1 if any(_bucket(b.get("_dt")) == len(sessions)
+                                           for b in beats) else 0)
+
+    def _sort_key(item):
+        # keep original order for undated items via a stable secondary key
+        dt = item[0]
+        return (0, dt) if dt is not None else (1, 0)
+
+    def _emit_chapter(idx, title_loc, summary, cliffhanger):
+        head = f"Chapter {idx + 1}"
+        if title_loc:
+            head += f" — {title_loc}"
+        a(f"# {head}\n")
+        ch_beats = [b for b in beats if _bucket(b.get("_dt")) == idx]
+        ch_plates = [p for p in plates if _bucket(p.get("_dt")) == idx]
+        if ch_beats:
+            # merge beats + plates on one timeline
+            timeline = [(b.get("_dt"), "beat", b) for b in ch_beats] \
+                + [(p.get("_dt"), "plate", p) for p in ch_plates]
+            timeline.sort(key=_sort_key)
+            placed = set()
+            for dt, kind, obj in timeline:
+                if kind == "beat":
+                    prose = _clean_prose(obj.get("text", ""))
+                    if prose:
+                        a(prose + "\n")
+                    # a beat may name the plate(s) it made — place them right here
+                    for fn in obj.get("images", []):
+                        pl = next((p for p in ch_plates if p["file"] == fn), None)
+                        if pl and pl["file"] not in placed:
+                            cap = pl["title"] or "A plate from the chronicle"
+                            a(f"\n![{esc(cap)}](images/{pl['file']})\n")
+                            placed.add(pl["file"])
+                else:
+                    if obj["file"] in placed:
+                        continue
+                    cap = obj["title"] or "A plate from the chronicle"
+                    a(f"\n![{esc(cap)}](images/{obj['file']})\n")
+                    placed.add(obj["file"])
+            if cliffhanger:
+                a(f"\n*{esc(cliffhanger)}*\n")
+        else:
+            # no recorded prose for this chapter — fall back to the summary
+            if summary:
+                a(esc(summary) + "\n")
+            if cliffhanger:
+                a(f"\n*{esc(cliffhanger)}*\n")
+            for pl in ch_plates:
                 cap = pl["title"] or "A plate from the chronicle"
                 a(f"\n![{esc(cap)}](images/{pl['file']})\n")
-            a("\n---\n")
+        a("\n---\n")
+
+    if sessions or beats:
+        for i, s in enumerate(sessions):
+            _emit_chapter(i, s["location"], s["summary"], s["cliffhanger"])
+        # trailing chapter for beats after the last saved session (current play)
+        if n_chapters > len(sessions):
+            trailing = [b for b in beats if _bucket(b.get("_dt")) == len(sessions)]
+            loc = (trailing[-1].get("location") if trailing else "") \
+                or char.get("current_location") or ""
+            _emit_chapter(len(sessions), loc, "", "")
     else:
-        # No played sessions yet — still produce a "world" ebook.
+        # No played sessions and nothing recorded — still produce a "world" ebook.
         a("# The World\n")
         if bible.get("themes"):
             a("**Themes.** " + "; ".join(bible["themes"]) + "\n")
@@ -255,7 +376,8 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
             cover = plates[-1]["file"]
     epub_name = re.sub(r'[<>:"/\\|?*]', "", title) + ".epub"
     return {"md": str(out_md), "cover": cover, "title": title,
-            "epub": epub_name, "sessions": len(sessions), "plates": len(plates)}
+            "epub": epub_name, "sessions": len(sessions), "plates": len(plates),
+            "beats": len(beats)}
 
 
 def main():

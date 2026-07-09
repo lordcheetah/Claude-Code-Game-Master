@@ -21,8 +21,11 @@ shift 2>/dev/null || true
 
 case "$ACTION" in
     record)
-        if [ -z "$1" ]; then
+        # Only refuse when there's no prose arg AND no piped stdin — the Python
+        # side reads prose from stdin when the positional is omitted.
+        if [ -z "$1" ] && [ -t 0 ]; then
             echo "Usage: gm-narrate.sh record \"<prose>\" [--location \"...\"] [--image file.png ...]"
+            echo "   or: echo \"<prose>\" | gm-narrate.sh record"
             exit 1
         fi
         $PYTHON_CMD "$LIB_DIR/narration_log.py" record "$@"

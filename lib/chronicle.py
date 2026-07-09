@@ -262,12 +262,15 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
 
     def _bucket(dt):
         """Index of the session this timestamp belongs to (len(sessions) = the
-        trailing current chapter). Undated items sort to the trailing chapter."""
+        trailing current chapter). Undated items — and anything after the last
+        DATED session-end — sort to the trailing chapter. Sessions whose own
+        end-timestamp didn't parse are skipped here (they can't bound by time),
+        so one unparseable end-stamp can't vacuum every later beat into it."""
         if dt is None:
             return len(sessions)
         for i, s in enumerate(sessions):
             end = s.get("end_dt")
-            if end is None or dt <= end:
+            if end is not None and dt <= end:
                 return i
         return len(sessions)
 
@@ -278,6 +281,11 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
         # keep original order for undated items via a stable secondary key
         dt = item[0]
         return (0, dt) if dt is not None else (1, 0)
+
+    # Track placed plates GLOBALLY so each plate appears exactly once across the
+    # whole chronicle — even if a beat's explicitly-attached plate is bucketed
+    # (by timestamp) into a different chapter than the beat that named it.
+    placed = set()
 
     def _emit_chapter(idx, title_loc, summary, cliffhanger):
         head = f"Chapter {idx + 1}"
@@ -291,15 +299,16 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
             timeline = [(b.get("_dt"), "beat", b) for b in ch_beats] \
                 + [(p.get("_dt"), "plate", p) for p in ch_plates]
             timeline.sort(key=_sort_key)
-            placed = set()
             for dt, kind, obj in timeline:
                 if kind == "beat":
                     prose = _clean_prose(obj.get("text", ""))
                     if prose:
                         a(prose + "\n")
-                    # a beat may name the plate(s) it made — place them right here
+                    # a beat may name the plate(s) it made — place them right here,
+                    # resolving against ALL plates so an attached plate lands at
+                    # its beat even if its own timestamp bucketed it elsewhere.
                     for fn in obj.get("images", []):
-                        pl = next((p for p in ch_plates if p["file"] == fn), None)
+                        pl = next((p for p in plates if p["file"] == fn), None)
                         if pl and pl["file"] not in placed:
                             cap = pl["title"] or "A plate from the chronicle"
                             a(f"\n![{esc(cap)}](images/{pl['file']})\n")
@@ -319,8 +328,11 @@ def build(campaign_dir, out_md, cover_index=None, appendix=True):
             if cliffhanger:
                 a(f"\n*{esc(cliffhanger)}*\n")
             for pl in ch_plates:
+                if pl["file"] in placed:
+                    continue
                 cap = pl["title"] or "A plate from the chronicle"
                 a(f"\n![{esc(cap)}](images/{pl['file']})\n")
+                placed.add(pl["file"])
         a("\n---\n")
 
     if sessions or beats:

@@ -473,7 +473,10 @@ class PlayerManager(EntityManager):
         if isinstance(raw, dict):
             cur, mx = int(raw.get('current', 0) or 0), int(raw.get('max', 0) or 0)
         elif isinstance(raw, (int, float)):
-            cur = int(raw); mx = int(char.get(f'{resource}_max', char.get('max_' + resource, cur)))
+            cur = int(raw)
+            # a present-but-null `<resource>_max` must fall back to cur, not crash int(None)
+            mx_val = char.get(f'{resource}_max') or char.get('max_' + resource)
+            mx = int(mx_val) if mx_val is not None else cur
         else:
             print(f"[ERROR] Character has no '{resource}' vital.")
             return {'success': False}

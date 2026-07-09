@@ -115,7 +115,8 @@ def _digest(body: dict) -> str:
             content = " ".join((r.get("content") or "").split())
             out.append(f"\n[{i}] {title}\n    {url}\n    {content}")
             if r.get("raw_content"):
-                raw = " ".join(r["raw_content"].split())
+                # slice before normalizing so a huge page isn't fully re-joined
+                raw = " ".join(r["raw_content"][:8000].split())
                 out.append(f"    --- full text ---\n    {raw[:4000]}")
     if not results and not body.get("answer"):
         out.append("(no results)")
@@ -134,7 +135,13 @@ def main() -> None:
     ap.add_argument("--json", action="store_true", help="Emit raw Tavily JSON")
     args = ap.parse_args()
 
-    query = args.query if args.query is not None else sys.stdin.read()
+    if args.query is not None:
+        query = args.query
+    elif not sys.stdin.isatty():
+        query = sys.stdin.read()   # piped input
+    else:
+        ap.print_help()            # interactive with no query — don't hang on stdin
+        sys.exit(1)
     try:
         body = research(query, max_results=args.max_results, depth=args.depth,
                         include_answer=not args.no_answer, include_raw=args.raw,

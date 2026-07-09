@@ -95,6 +95,13 @@ def run(token, channel_id=None):
                                 p = relay.campaign_dir / "images" / fn
                                 if p.is_file():
                                     files.append(discord.File(str(p)))
+                            # An entry with no text AND no images can't be sent
+                            # (Discord rejects an empty message). Skip it — otherwise
+                            # its send fails forever and 'since' never advances,
+                            # deadlocking the relay on a 2s retry loop.
+                            if not (e.get("text") or "").strip() and not files:
+                                state["since"] = max(state["since"], e["id"])
+                                continue
                             parts = _chunks(e.get("text", ""))
                             try:
                                 for i, part in enumerate(parts):

@@ -44,7 +44,9 @@ Pick the attribute set the world implies — do NOT reflexively ship the six 5e
 abilities. Sword-and-sorcery might add `agi`; a tech world might use
 `logic`/`systems`/`nerve`; a folk-horror world might track `composure`. `vitals`
 is usually `["hp"]` but add `corruption`, `sanity`, `heat`, `charge`, etc. when
-the magic/tech demands a resource to spend or lose.
+the magic/tech demands a resource to spend or lose. An exploration/metroidvania
+world adds consumable/expandable vitals like `missiles`, `ammo`, `energy` (and
+treats "Energy Tank"–style pickups as raising max HP).
 
 ### progression — choose by genre, supply real params
 - `milestone` — story-beat advancement, no XP math (good default for
@@ -53,14 +55,30 @@ the magic/tech demands a resource to spend or lose.
   Thresholds are SUPPLIED, never a hardcoded 5e table.
 - `resource-axis` — advancement by a world resource:
   `{ "model": "resource-axis", "resource": "viewers", "tiers": [1000000, ...] }`.
+- **ability-unlock (metroidvania)** — progression is NOT a scalar level but a SET of
+  unlocked abilities (Morph Ball, Grapple, Ice Beam…). Keep `{ "model": "milestone" }`
+  for the overall power arc, and track abilities as **items/features on the character**
+  (they're booleans — "do you have it?" — not a number). Each new ability retroactively
+  opens areas: that's the signature system below, not the progression model.
 
 ### signature_systems — THE distinctive mechanics, named and specific
 This is the heart of the kit. Encode what makes the world's magic/tech mechanically
 different. Examples:
 - Blood-priced sorcery: casting costs HP or raises `corruption`; NO Vancian slots.
 - Nanomagic: abilities draw a shared `charge` pool; overdraw risks a malfunction roll.
+- **Ability-Gated Exploration (metroidvania):** the world is one connected space full of
+  obstacles that each name a REQUIRED ability (a Morph-Ball tunnel, a Grapple gap, an
+  Ice-Beam-frozen enemy used as a platform). The PC cannot pass an obstacle until they
+  hold its ability (tracked as items/features). Gaining an ability retroactively OPENS
+  previously-blocked places — so the loop is explore → hit a wall → find the key ability
+  → backtrack to what it unlocks. Pair it with **Scan-for-Weakness:** examining a
+  creature/mechanism reveals which ability or beam it's vulnerable to (turning tough
+  enemies into puzzles). Write the `rules` so the GM consistently: names the required
+  ability at each obstacle, refuses passage without it, and — on unlock — calls out what
+  just became reachable (including places already visited).
 Each entry: `{ "name", "summary", "rules" }`. Be concrete enough that the GM can
 adjudicate from it. If the lore says magic costs blood, the kit MUST cost blood.
+If it's a metroidvania, gates MUST name a required ability the GM enforces.
 
 ### active_agents
 Choose the specialist agents that fit this world. Use `dnd5eapi`-backed agents

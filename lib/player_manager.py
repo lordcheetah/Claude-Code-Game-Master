@@ -460,6 +460,34 @@ class PlayerManager(EntityManager):
             'xp_remaining': remaining
         }
 
+    def modify_resource(self, name: str, resource: str, amount: int) -> Dict[str, Any]:
+        """Modify a named consumable vital (missiles, energy, ammo…): negative =
+        spend, positive = restock. Handles both {current,max} dict and scalar
+        shapes. Clamps to [0, max]. Kit-agnostic (game_core spend/restock)."""
+        from game_core import spend_resource, restock_resource
+        char = self._load_character(name)
+        if not char:
+            print(f"[ERROR] Character '{name}' not found")
+            return {'success': False}
+        raw = char.get(resource)
+        if isinstance(raw, dict):
+            cur, mx = int(raw.get('current', 0) or 0), int(raw.get('max', 0) or 0)
+        elif isinstance(raw, (int, float)):
+            cur = int(raw); mx = int(char.get(f'{resource}_max', char.get('max_' + resource, cur)))
+        else:
+            print(f"[ERROR] Character has no '{resource}' vital.")
+            return {'success': False}
+        new = restock_resource(cur, mx, amount) if amount >= 0 else spend_resource(cur, -amount)
+        if isinstance(raw, dict):
+            char[resource]['current'] = new
+        else:
+            char[resource] = new
+        if not self._save_character(name, char):
+            return {'success': False}
+        verb = 'restocked' if amount >= 0 else 'spent'
+        print(f"{resource.upper()} {verb} {abs(amount)} -> {new}/{mx}")
+        return {'success': True, 'resource': resource, 'current': new, 'max': mx}
+
     def modify_hp(self, name: str, amount: int) -> Dict[str, Any]:
         """
         Modify character HP (positive = heal, negative = damage)
@@ -931,6 +959,11 @@ def main():
     hp_parser.add_argument('name', help='Character name')
     hp_parser.add_argument('amount', help='HP change (+5 to heal, -3 for damage)')
 
+    res_parser = subparsers.add_parser('resource', help='Modify a consumable vital (missiles, energy, ammo)')
+    res_parser.add_argument('name', help='Character name')
+    res_parser.add_argument('resource', help='Vital name (e.g. missiles, energy)')
+    res_parser.add_argument('amount', help='Change (+2 restock, -1 spend)')
+
     # Kill character (death state)
     kill_parser = subparsers.add_parser('kill', help='Mark character dead (status + HP 0 + cause)')
     kill_parser.add_argument('name', help='Character name')
@@ -1099,6 +1132,15 @@ def main():
 
         result = manager.modify_hp(args.name, amount)
         if not result.get('success'):
+            sys.exit(1)
+
+    elif args.action == 'resource':
+        try:
+            amt = int(args.amount.lstrip('+'))
+        except ValueError:
+            print(f"[ERROR] Invalid amount: {args.amount}")
+            sys.exit(1)
+        if not manager.modify_resource(args.name, args.resource, amt).get('success'):
             sys.exit(1)
 
     elif args.action == 'kill':

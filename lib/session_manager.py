@@ -219,10 +219,11 @@ class SessionManager(EntityManager):
         if changed:
             self.json_ops.save_json("locations.json", locations)
 
-    def move_party(self, location: str) -> Dict[str, str]:
+    def move_party(self, location: str, force: bool = False) -> Dict[str, str]:
         """
         Move party to new location
-        Returns dict with previous and current location
+        Returns dict with previous and current location, or a blocked dict if an
+        ability-gated connection refuses passage (unless force=True).
         """
         campaign = self.json_ops.load_json(self.campaign_file)
 
@@ -230,6 +231,28 @@ class SessionManager(EntityManager):
             campaign['player_position'] = {}
 
         old_location = campaign['player_position'].get('current_location', 'Unknown')
+
+        # Ability-gate enforcement (the metroidvania engine): if a KNOWN connection
+        # from old->new declares `requires` and the active PC lacks the abilities,
+        # refuse the move so the GM narrates the gate. New/unknown destinations are
+        # unrestricted (exploration). `force` overrides (GM narrative override).
+        if not force and old_location and old_location != 'Unknown':
+            locs = self.json_ops.load_json("locations.json") or {}
+            old = locs.get(old_location) or {}
+            edge = next((e for e in (old.get('connections') or [])
+                         if isinstance(e, dict) and e.get('to') == location), None)
+            if isinstance(edge, dict) and edge.get('requires'):
+                try:
+                    import exploration as _ex
+                    char = to_flat(self.json_ops.load_json("character.json") or {}) \
+                        if self.character_file.exists() else {}
+                    held = _ex.held_abilities(char)
+                    if not _ex.edge_passable(edge, held):
+                        return {"blocked": True, "from": old_location, "to": location,
+                                "requires": edge.get('requires'),
+                                "missing": _ex.missing_for_edge(edge, held)}
+                except Exception:
+                    pass  # never let the gate check crash a move
 
         # Auto-create location and connections
         self._ensure_location_and_connection(old_location, location)
@@ -983,6 +1006,8 @@ def main():
     # Move party
     move_parser = subparsers.add_parser('move', help='Move party to location')
     move_parser.add_argument('location', nargs='+', help='Location name')
+    move_parser.add_argument('--force', action='store_true',
+                             help='Override an ability-gate (GM narrative override)')
 
     # Save
     save_parser = subparsers.add_parser('save', help='Create save point')
@@ -1033,7 +1058,8 @@ def main():
         emit({"context": manager.get_full_context(full=getattr(args, 'full', False))}, json_mode=True)
         return
     if json_mode and args.action == 'move':
-        emit(manager.move_party(' '.join(args.location)), json_mode=True)
+        emit(manager.move_party(' '.join(args.location), force=getattr(args, 'force', False)),
+             json_mode=True)
         return
 
     if args.action == 'start':
@@ -1052,7 +1078,13 @@ def main():
 
     elif args.action == 'move':
         location = ' '.join(args.location)
-        result = manager.move_party(location)
+        result = manager.move_party(location, force=getattr(args, 'force', False))
+        if result.get('blocked'):
+            missing = ', '.join(result.get('missing') or result.get('requires') or [])
+            print(f"[BLOCKED] The way to {result['to']} is ability-gated — it needs: "
+                  f"{missing}. The PC does not hold it; narrate the gate (or re-run "
+                  f"with --force to override).")
+            sys.exit(2)
         print(json.dumps(result, indent=2))
 
     elif args.action == 'save':

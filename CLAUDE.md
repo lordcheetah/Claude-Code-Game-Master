@@ -53,6 +53,7 @@ SWAP (make the chosen character the active PC):
 | LEVEL_UP / milestone | Progression (kit's model) | `gm-levelup` |
 | Narrate / voice an NPC | Narration craft | `gm-craft` |
 | Scene context reports `Multiplayer: ON` | Multi-PC table (several human players as peers; attribute actions per player, per-seat state via `gm-party.sh` + `gm-player.sh --player`, non-destructive death) | `gm-multiplayer` |
+| Ability-gated (metroidvania) world — a place sealed behind a required ability | Gates are DATA on connections; `gm-session.sh move` auto-BLOCKS a gated move (narrate the gate); after an upgrade run `gm-explore.sh gained "<ability>"` to surface what just opened | `gm-exploration` |
 
 If a skill fails to load, fall back to the matching section in the archived full
 ruleset (`docs/` / git history). The RULES SYSTEM is the active World Kit's skill —

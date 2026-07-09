@@ -86,6 +86,17 @@ case "$ACTION" in
         $PYTHON_CMD "$LIB_DIR/player_manager.py" hp "$NAME" "$AMT" "$@"
         ;;
 
+    "resource")
+        if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+            echo "Usage: gm-player.sh resource <name> <vital> <+/-amount>"
+            echo "Example: gm-player.sh resource \"Jakos Tru\" missiles -1   (fire a missile)"
+            echo "Example: gm-player.sh resource \"Jakos Tru\" missiles +5   (Missile Tank)"
+            exit 1
+        fi
+        NAME="$1"; RES="$2"; AMT="$3"; shift 3
+        $PYTHON_CMD "$LIB_DIR/player_manager.py" resource "$NAME" "$RES" "$AMT" "$@"
+        ;;
+
     "get")
         if [ -z "$1" ]; then
             echo "Usage: gm-player.sh get <character_name>"

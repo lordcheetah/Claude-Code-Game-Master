@@ -37,10 +37,21 @@ case "$ACTION" in
 
     connect)
         if [ "$#" -lt 3 ]; then
-            echo "Usage: gm-location.sh connect <from> <to> <path>"
+            echo "Usage: gm-location.sh connect <from> <to> <path> [--requires \"ability1,ability2\"]"
             exit 1
         fi
-        $PYTHON_CMD "$LIB_DIR/location_manager.py" connect "$1" "$2" "$3"
+        FROM="$1"; TO="$2"; PATHD="$3"; shift 3
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" connect "$FROM" "$TO" "$PATHD" "$@"
+        ;;
+
+    gate)
+        if [ "$#" -lt 2 ]; then
+            echo "Usage: gm-location.sh gate <from> <to> --requires \"ability1,ability2\" [--direction both|forward|back]"
+            echo "  (omit --requires or pass empty to CLEAR a gate)"
+            exit 1
+        fi
+        FROM="$1"; TO="$2"; shift 2
+        $PYTHON_CMD "$LIB_DIR/location_manager.py" gate "$FROM" "$TO" "$@"
         ;;
 
     describe)
@@ -75,7 +86,7 @@ case "$ACTION" in
 
     *)
         echo "Unknown action: $ACTION"
-        echo "Valid actions: add, connect, describe, get, list, connections"
+        echo "Valid actions: add, connect, gate, describe, get, list, connections"
         exit 1
         ;;
 esac

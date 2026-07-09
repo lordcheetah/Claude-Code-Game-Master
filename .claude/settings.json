@@ -27,7 +27,8 @@
       "Bash(bash tools/gm-sourcebook.sh*)",
       "Bash(bash tools/gm-party.sh*)",
       "Bash(bash tools/gm-relay.sh*)",
-      "Bash(bash tools/gm-research.sh*)"
+      "Bash(bash tools/gm-research.sh*)",
+      "Bash(bash tools/gm-explore.sh*)"
     ],
     "ask": [
       "Bash(bash tools/gm-reset.sh*)",

@@ -51,9 +51,15 @@ class LocationManager(EntityManager):
             return True
         return False
 
-    def connect_locations(self, from_loc: str, to_loc: str, path: str) -> bool:
+    def connect_locations(self, from_loc: str, to_loc: str, path: str,
+                          requires=None) -> bool:
         """
-        Connect two locations bidirectionally
+        Connect two locations bidirectionally.
+
+        `requires` (list of ability names) makes this a GATED connection — passing
+        it needs those abilities (the metroidvania engine, lib/exploration.py). By
+        default the gate is symmetric (needed both ways, like a morph tunnel); use
+        set_gate() afterward for a one-way gate.
         """
         # Validate names
         for loc in [from_loc, to_loc]:
@@ -85,17 +91,56 @@ class LocationManager(EntityManager):
         if 'connections' not in locations[to_loc]:
             locations[to_loc]['connections'] = []
 
-        locations[from_loc]['connections'].append({
-            'to': to_loc,
-            'path': path
-        })
-        locations[to_loc]['connections'].append({
-            'to': from_loc,
-            'path': path
-        })
+        edge_fwd = {'to': to_loc, 'path': path}
+        edge_back = {'to': from_loc, 'path': path}
+        if requires:
+            req = [r for r in (requires if isinstance(requires, list) else [requires]) if r]
+            if req:
+                edge_fwd['requires'] = req
+                edge_back['requires'] = list(req)
+        locations[from_loc]['connections'].append(edge_fwd)
+        locations[to_loc]['connections'].append(edge_back)
 
         if self._save_entities(self.locations_file, locations):
-            print(f"[SUCCESS] Connected {from_loc} <-> {to_loc} via {path}")
+            gate = f" [gated: {', '.join(edge_fwd['requires'])}]" if 'requires' in edge_fwd else ""
+            print(f"[SUCCESS] Connected {from_loc} <-> {to_loc} via {path}{gate}")
+            return True
+        return False
+
+    def set_gate(self, from_loc: str, to_loc: str, requires, direction: str = "both") -> bool:
+        """Set (or clear) the ability requirement on an EXISTING connection.
+
+        `requires` = list of ability names (or [] / None to clear the gate).
+        `direction`: 'both' (symmetric), 'forward' (only from->to), or 'back'
+        (only to->from). Use for one-way gates (a drop you can't climb back)."""
+        locations = self._load_entities(self.locations_file)
+        if from_loc not in locations or to_loc not in locations:
+            print(f"[ERROR] Location not found: {from_loc if from_loc not in locations else to_loc}")
+            return False
+        req = [r for r in (requires or []) if r] if requires else []
+
+        def _apply(edges, dest):
+            hit = False
+            for e in edges:
+                if isinstance(e, dict) and e.get("to") == dest:
+                    if req:
+                        e["requires"] = list(req)
+                    else:
+                        e.pop("requires", None)
+                    hit = True
+            return hit
+
+        ok = False
+        if direction in ("both", "forward"):
+            ok = _apply(locations[from_loc].setdefault("connections", []), to_loc) or ok
+        if direction in ("both", "back"):
+            ok = _apply(locations[to_loc].setdefault("connections", []), from_loc) or ok
+        if not ok:
+            print(f"[ERROR] No existing connection between '{from_loc}' and '{to_loc}' (connect them first).")
+            return False
+        if self._save_entities(self.locations_file, locations):
+            what = f"gated: {', '.join(req)}" if req else "gate cleared"
+            print(f"[SUCCESS] {from_loc} {'<->' if direction=='both' else '->'} {to_loc} — {what}")
             return True
         return False
 
@@ -246,6 +291,14 @@ def main():
     connect_parser.add_argument('from_loc', help='From location')
     connect_parser.add_argument('to_loc', help='To location')
     connect_parser.add_argument('path', help='Path description')
+    connect_parser.add_argument('--requires', help='Ability-gate: comma-separated abilities needed to pass')
+
+    gate_parser = subparsers.add_parser('gate', help='Set/clear an ability-gate on an existing connection')
+    gate_parser.add_argument('from_loc', help='From location')
+    gate_parser.add_argument('to_loc', help='To location')
+    gate_parser.add_argument('--requires', help='Comma-separated abilities needed to pass (omit/empty to clear)')
+    gate_parser.add_argument('--direction', choices=['both', 'forward', 'back'], default='both',
+                             help="'both' (symmetric, default), 'forward' (from->to only), 'back' (to->from only)")
 
     # Describe location
     describe_parser = subparsers.add_parser('describe', help='Set location description')
@@ -275,8 +328,13 @@ def main():
         if not manager.add_location(args.name, args.position):
             sys.exit(1)
 
+    elif args.action == 'gate':
+        req = [r.strip() for r in (args.requires or '').split(',') if r.strip()]
+        if not manager.set_gate(args.from_loc, args.to_loc, req, direction=args.direction):
+            sys.exit(1)
     elif args.action == 'connect':
-        if not manager.connect_locations(args.from_loc, args.to_loc, args.path):
+        req = [r.strip() for r in (args.requires or '').split(',') if r.strip()] if args.requires else None
+        if not manager.connect_locations(args.from_loc, args.to_loc, args.path, requires=req):
             sys.exit(1)
 
     elif args.action == 'describe':

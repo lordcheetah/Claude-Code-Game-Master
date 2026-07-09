@@ -78,6 +78,17 @@ def heal(current_hp: int, max_hp: int, amount: int) -> int:
     return min(max_hp, current_hp + max(0, amount))
 
 
+def spend_resource(current: int, amount: int) -> int:
+    """Spend N of a consumable vital (missiles, ammo, energy), floored at 0.
+    Kit-agnostic companion to apply_harm for non-HP resources."""
+    return max(0, current - max(0, amount))
+
+
+def restock_resource(current: int, max_amount: int, amount: int) -> int:
+    """Restock a consumable vital by N, capped at its max (pickups/refills)."""
+    return min(max_amount, current + max(0, amount))
+
+
 def add_condition(conditions: List[str], condition: str) -> List[str]:
     """Add a condition (idempotent). Returns a new list."""
     out = list(conditions or [])

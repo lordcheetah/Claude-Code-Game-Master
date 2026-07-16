@@ -91,15 +91,21 @@ class WorldAuthor:
             if name in root:
                 continue
             tags = npc.get("tags") or {}
+            # Carry every tag key an author wrote, not just a fixed whitelist.
+            # A whitelist here silently discards data with no error and no
+            # warning -- tags.factions in particular, which made NPC->faction
+            # allegiance structurally inexpressible from authored/*.json.
+            # locations/quests are normalized so downstream readers can rely on
+            # them existing; anything else the author wrote passes through.
+            merged_tags = {k: v for k, v in tags.items()}
+            merged_tags["locations"] = tags.get("locations", [])
+            merged_tags["quests"] = tags.get("quests", [])
             entry = {
                 "description": npc.get("description", ""),
                 "attitude": npc.get("attitude", "neutral"),
                 "created": npc.get("created") or _now(),
                 "events": npc.get("events", []),
-                "tags": {
-                    "locations": tags.get("locations", []),
-                    "quests": tags.get("quests", []),
-                },
+                "tags": merged_tags,
             }
             if npc.get("current_mood"):
                 entry["current_mood"] = npc["current_mood"]
@@ -159,10 +165,18 @@ class WorldAuthor:
         if "voice" in frag:
             voice = bible.setdefault("voice", {})
             for k, v in frag["voice"].items():
-                if k == "sample_passages":
-                    self._append_dedupe(voice.setdefault("sample_passages", []), v)
+                # EVERY list-valued voice key accumulates -- sample_passages,
+                # vocab, and anything an author adds later. Only sample_passages
+                # used to, which meant an axis's authored vocab was silently
+                # discarded whenever the skeleton already had a vocab list --
+                # and the skeleton always does. /new-game explicitly expects the
+                # culture axis to "deepen vocab + add passages", so dropping it
+                # contradicted the documented contract. (One Greek-myth world
+                # lost 154 authored vocab entries this way, with no warning.)
+                if isinstance(v, list) and isinstance(voice.get(k, []), list):
+                    self._append_dedupe(voice.setdefault(k, []), v)
                 elif k not in voice or not voice.get(k):
-                    voice[k] = v  # skeleton voice wins; fragment fills gaps
+                    voice[k] = v  # skeleton wins for scalars; fragment fills gaps
 
     # ---- consolidate ----
     def consolidate(self) -> Dict[str, Any]:

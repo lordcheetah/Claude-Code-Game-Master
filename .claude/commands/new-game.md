@@ -181,7 +181,11 @@ bash tools/gm-worldgen.sh consolidate
 CANON=$(bash tools/gm-worldgen.sh compile-canon --json | uv run python -c "import sys,json;print(json.load(sys.stdin)['data']['path'])")
 
 # 3. Embed it for RAG — same path imports use (writes current-document.txt + chunks + vectors)
-bash tools/gm-extract.sh prepare "$CANON" "<CAMPAIGN_NAME>"
+#    --append ADDS the canon to the corpus. On the KNOWN-IP branch the researched
+#    lore was already embedded in Phase A; without --append this call REPLACES it
+#    and play-time RAG silently loses the primary sources the world was built on.
+#    (Harmless on the original-world branch: nothing to preserve, append == fresh.)
+bash tools/gm-extract.sh prepare "$CANON" "<CAMPAIGN_NAME>" --append
 
 # 4. Confirm the bible (the human approved it in Phase B; world is now grounded)
 uv run python -c "import sys; sys.path.insert(0,'lib'); from world_bible import WorldBible; WorldBible().confirm()"
@@ -243,7 +247,9 @@ Run **`/create-character`**.
 - [ ] every axis produced `canon/<axis>.md` + `authored/<axis>.json`
 - [ ] `reconcile-report.json` verdict handled
 - [ ] consolidated `locations/npcs/facts.json` + merged bible graphs
-- [ ] `current-document.txt` embedded (RAG returns hits)
+- [ ] `current-document.txt` embedded (RAG returns hits) — and on the known-IP
+      branch, the researched lore is STILL retrievable alongside the authored
+      canon (that is what `--append` in Phase E step 3 protects; probe both)
 - [ ] `/world-check` passes
 - [ ] chronicler locked (`gm-image.sh chronicler`) — both the art **style** (starts "In the style of ...", a creative mashup) AND the art **narrator** (name + persona)
 - [ ] every notable NPC has a `visual_appearance` block (11 keys); PC gets one at `/create-character`

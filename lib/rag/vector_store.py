@@ -102,8 +102,12 @@ class CampaignVectorStore:
             for emb in embeddings
         ]
 
-        # Add to collection
-        self._collection.add(
+        # Upsert rather than add: .add() SILENTLY IGNORES chunks whose id already
+        # exists, so re-embedding an edited document would keep the stale text
+        # with no error. Upsert refreshes in place. Fall back to .add() on older
+        # chromadb builds that predate upsert.
+        write = getattr(self._collection, 'upsert', None) or self._collection.add
+        write(
             documents=chunks,
             embeddings=embeddings_list,
             metadatas=metadatas,

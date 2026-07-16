@@ -11,11 +11,32 @@ from typing import Optional, List, Tuple
 class Validators:
     """Input validation for GM system"""
 
+    # Characters a name may never contain. This is a denylist, not an allowlist,
+    # because names are prose written by world-gen and by the GM, and an allowlist
+    # loses that fight every time (it used to reject "Dr. Daniel Jackson").
+    #
+    # Scope of this check: names validated here are DICT KEYS in npcs.json and
+    # locations.json. They are never used as filenames (character files go through
+    # player_manager's slugified char_id) and nothing in lib/ or tools/ passes them
+    # to a shell -- there is no shell=True, os.system, or eval anywhere.
+    #
+    # The one property that does matter: the GM routinely interpolates a name into
+    # a double-quoted bash argument, e.g. gm-npc.sh mood "<name>". So a name must
+    # survive that. Inside double quotes bash only special-cases " $ ` and \, so
+    # those four are the entire risk surface; everything else -- periods, commas,
+    # parentheses, slashes, ampersands, em/en dashes, accented and non-Latin
+    # letters -- is inert and appears in legitimate names:
+    #   "Dr. Daniel Jackson", "The Harpies — Aellopous and Okypete",
+    #   "Innsmouth Harbor / Waterfront", "Nüe Sarran"
+    _NAME_FORBIDDEN = frozenset('"$`\\')
+
     @staticmethod
     def validate_name(name: str) -> Tuple[bool, Optional[str]]:
         """
-        Validate name/identifier
-        Allows: alphanumeric, spaces, hyphens, apostrophes
+        Validate a name/identifier used as an NPC or location key.
+
+        Rejects only what actually breaks: shell-quoting metacharacters (" $ ` \)
+        and control characters. All other printable text is allowed.
         Returns: (is_valid, error_message)
         """
         if not name or not name.strip():
@@ -25,10 +46,16 @@ class Validators:
         if len(name) > 100:
             return False, "Name too long (max 100 characters)"
 
-        # Check characters
-        pattern = r"^[a-zA-Z0-9\s\-']+$"
-        if not re.match(pattern, name):
-            return False, "Invalid name. Use only letters, numbers, spaces, hyphens, and apostrophes"
+        bad = sorted({c for c in name if c in Validators._NAME_FORBIDDEN})
+        if bad:
+            return False, (
+                f"Invalid name: contains {' '.join(bad)}. A name may not contain "
+                '" $ ` or \\ -- they break shell quoting when the name is passed '
+                "to a tool. Rename it (typographic quotes “ ” are fine)."
+            )
+
+        if any(ord(c) < 32 or ord(c) == 127 for c in name):
+            return False, "Invalid name: contains control characters"
 
         return True, None
 

@@ -76,11 +76,16 @@ class CampaignManager:
                 try:
                     with open(char_file, 'r', encoding='utf-8') as f:
                         char = to_flat(json.load(f))
+                    # Report what the sheet ACTUALLY has. These fields are 5e's,
+                    # and most kits do not define them -- defaulting them to
+                    # "?"/1 invented a race, a class, and a level for every
+                    # non-5e world and printed them as fact. None means absent,
+                    # and the renderer omits what is absent.
                     campaign_info["character"] = {
                         "name": char.get("name", "Unknown"),
-                        "race": char.get("race", "?"),
-                        "class": char.get("class", "?"),
-                        "level": char.get("level", 1)
+                        "race": char.get("race"),
+                        "class": char.get("class"),
+                        "level": char.get("level"),
                     }
                 except (json.JSONDecodeError, IOError) as e:
                     print(f"[WARNING] Could not read character for {campaign_dir.name}: {e}", file=sys.stderr)
@@ -415,7 +420,11 @@ def main():
                 char_info = ""
                 if "character" in c:
                     char = c["character"]
-                    char_info = f"{char['name']} ({char['race']} {char['class']} L{char['level']})"
+                    # Only show the 5e descriptors a sheet actually carries.
+                    bits = [str(b) for b in (char.get('race'), char.get('class')) if b]
+                    if char.get('level'):
+                        bits.append(f"L{char['level']}")
+                    char_info = f"{char['name']} ({' '.join(bits)})" if bits else str(char['name'])
                 sessions = c.get("session_count", 0)
                 print(f"{marker} {c['name']:20}{char_info:25}{sessions}")
             print()

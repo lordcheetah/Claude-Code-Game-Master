@@ -91,6 +91,18 @@ class WorldAuthor:
             if name in root:
                 continue
             tags = npc.get("tags") or {}
+            # An authoring agent can emit a list or a string here, which used to
+            # take the whole consolidate down with an AttributeError -- losing an
+            # entire fan-out's work over one malformed field. Skip the bad tags
+            # but SAY SO: dropping them silently is the very bug this method's
+            # whitelist removal exists to fix.
+            if not isinstance(tags, dict):
+                print(
+                    f"[WARNING] NPC '{name}': tags must be an object, got "
+                    f"{type(tags).__name__} -- tags dropped for this entry",
+                    file=sys.stderr,
+                )
+                tags = {}
             # Carry every tag key an author wrote, not just a fixed whitelist.
             # A whitelist here silently discards data with no error and no
             # warning -- tags.factions in particular, which made NPC->faction
@@ -163,20 +175,37 @@ class WorldAuthor:
             if list_key in frag:
                 self._append_dedupe(bible.setdefault(list_key, []), frag[list_key])
         if "voice" in frag:
-            voice = bible.setdefault("voice", {})
-            for k, v in frag["voice"].items():
-                # EVERY list-valued voice key accumulates -- sample_passages,
-                # vocab, and anything an author adds later. Only sample_passages
-                # used to, which meant an axis's authored vocab was silently
-                # discarded whenever the skeleton already had a vocab list --
-                # and the skeleton always does. /new-game explicitly expects the
-                # culture axis to "deepen vocab + add passages", so dropping it
-                # contradicted the documented contract. (One Greek-myth world
-                # lost 154 authored vocab entries this way, with no warning.)
-                if isinstance(v, list) and isinstance(voice.get(k, []), list):
-                    self._append_dedupe(voice.setdefault(k, []), v)
-                elif k not in voice or not voice.get(k):
-                    voice[k] = v  # skeleton wins for scalars; fragment fills gaps
+            self._merge_voice(bible, frag["voice"])
+
+    def _merge_voice(self, bible: Dict, frag_voice: Any) -> None:
+        voice = bible.setdefault("voice", {})
+        # A malformed voice (a string/list on either side) used to crash the
+        # merge with an AttributeError, taking a whole fan-out's consolidate
+        # with it. Warn and skip -- and do NOT overwrite the bible's value with
+        # {}: the skeleton is human-approved canon, so a bad value is a bug to
+        # surface for repair, not to quietly replace. validate_bible already
+        # reports it ("voice must be an object").
+        if not isinstance(voice, dict) or not isinstance(frag_voice, dict):
+            print(
+                "[WARNING] world-bible voice must be an object "
+                f"(bible={type(voice).__name__}, fragment={type(frag_voice).__name__})"
+                " -- voice merge skipped",
+                file=sys.stderr,
+            )
+            return
+        for k, v in frag_voice.items():
+            # EVERY list-valued voice key accumulates -- sample_passages, vocab,
+            # and anything an author adds later. Only sample_passages used to,
+            # which meant an axis's authored vocab was silently discarded
+            # whenever the skeleton already had a vocab list -- and the skeleton
+            # always does. /new-game explicitly expects the culture axis to
+            # "deepen vocab + add passages", so dropping it contradicted the
+            # documented contract. (One Greek-myth world lost 154 authored vocab
+            # entries this way, with no warning.)
+            if isinstance(v, list) and isinstance(voice.get(k, []), list):
+                self._append_dedupe(voice.setdefault(k, []), v)
+            elif k not in voice or not voice.get(k):
+                voice[k] = v  # skeleton wins for scalars; fragment fills gaps
 
     # ---- consolidate ----
     def consolidate(self) -> Dict[str, Any]:

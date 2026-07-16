@@ -176,7 +176,7 @@ class AgentExtractor:
         chunks = self._rag_extractor._split_into_chunks(full_text)
         start_index = 0
         if append:
-            start_index = len(list((self.extraction_dir / "chunks").glob("chunk_*.txt")))
+            start_index = self._next_chunk_index()
         self._write_chunk_files(chunks, start_index=start_index)
 
         # Create metadata
@@ -591,6 +591,28 @@ class AgentExtractor:
             review['samples']['plot_hooks'] = list(data['plot_hooks'].keys())[:5]
 
         return review
+
+    def _next_chunk_index(self) -> int:
+        """First chunk index that is free, from the HIGHEST existing index + 1.
+
+        Counting the files instead would collide the moment the sequence has a
+        gap: with chunk_000/001/003/004 on disk, len() is 4 and we would write
+        chunk_004.txt straight over an existing chunk -- silently destroying the
+        document this append exists to preserve. Gaps are reachable via a manual
+        delete or a half-finished run. Unparseable names are ignored rather than
+        crashing the run.
+        """
+        chunk_dir = self.extraction_dir / "chunks"
+        if not chunk_dir.is_dir():
+            return 0
+        indices = []
+        for p in chunk_dir.glob("chunk_*.txt"):
+            suffix = p.stem[len("chunk_"):]
+            try:
+                indices.append(int(suffix))
+            except ValueError:
+                continue
+        return max(indices) + 1 if indices else 0
 
     def _write_chunk_files(self, chunks: list, start_index: int = 0) -> Dict:
         """Write chunks to files for extraction agents to read.

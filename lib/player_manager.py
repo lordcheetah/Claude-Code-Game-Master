@@ -5,6 +5,7 @@ Handles PC operations: XP, HP, level progression, and character data
 """
 
 import os
+import re
 import sys
 import json
 from typing import Dict, List, Optional, Any
@@ -15,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from entity_manager import EntityManager
 from character_schema import to_flat, is_open_schema, hp_current_max, set_hp_current
+from game_core import make_progression
 
 
 class PlayerManager(EntityManager):
@@ -160,6 +162,116 @@ class PlayerManager(EntityManager):
             return [0] + list(prog["thresholds"])
         return self.DEFAULT_XP_THRESHOLDS
 
+    @staticmethod
+    def _fmt_vital(val: Any) -> Optional[str]:
+        """Render one vital for a one-line summary, or None to omit it.
+
+        Vitals are not all plain numbers. Across the shipped kits they are:
+          {"current": 5, "max": 5}                       -> "5/5"
+          50                                             -> "50"
+          {"total_grains": 8, "lots": [...]}             -> "8"   (headline scalar)
+          null                                           -> omitted
+        Never str() a dict into the status bar -- that prints raw Python at the
+        table.
+        """
+        if val is None:
+            return None
+        if isinstance(val, dict):
+            if 'current' in val:
+                cur = val.get('current')
+                mx = val.get('max')
+                return f"{cur}/{mx}" if mx else f"{cur}"
+            # Otherwise show the first scalar the ledger exposes as its headline
+            # number; a nested ledger cannot be rendered on one line, and the
+            # full sheet is one command away.
+            for v in val.values():
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    return f"{v}"
+                if isinstance(v, str) and v:
+                    return v
+            return None
+        if isinstance(val, (list, tuple, set)):
+            return f"{len(val)}" if val else None
+        return f"{val}"
+
+    def _kit_vitals(self) -> List[str]:
+        """The vitals the active World Kit declares, minus hp (rendered separately).
+
+        An empty list means the kit declares none, and the caller falls back to the
+        legacy race/class/Level/Gold line.
+        """
+        ruleset = self.json_ops.load_json("ruleset.json") or {}
+        vitals = (ruleset.get("stat_schema") or {}).get("vitals") or []
+        return [v for v in vitals if v != "hp"]
+
+    def _kit_grade(self, char: Dict) -> Optional[str]:
+        """The character's progression grade per the kit, as a short label.
+
+        Kits may declare `progression.grades` as prose, one per tier reached
+        (index 0 == the un-advanced grade), e.g.
+            "12 — onomastos, Named: the poem gives you a father and a town."
+        We show only the head — "onomastos, Named" — and fall back to None rather
+        than guessing if the shape is not what we expect. Cosmetic either way.
+        """
+        ruleset = self.json_ops.load_json("ruleset.json") or {}
+        prog = ruleset.get("progression") or {}
+        grades = prog.get("grades")
+        # Must be a LIST. A bare string would happily index by character and
+        # render a single letter as the character's grade rather than failing.
+        if not isinstance(grades, list) or not grades:
+            return None
+        if prog.get("model") != "resource-axis":
+            return None
+        try:
+            engine = make_progression(
+                "resource-axis",
+                resource=prog.get("resource", "resource"),
+                tiers=prog.get("tiers") or [],
+            )
+            idx = engine.level(to_flat(char))
+            label = str(grades[min(idx, len(grades) - 1)])
+        except Exception:
+            return None
+        head = label.split(":", 1)[0]
+        # Strip a leading "<threshold> — " / "<threshold> - " prefix if present.
+        head = re.sub(r"^\s*\d+\s*[—–-]\s*", "", head)
+        return head.strip() or None
+
+    def _summary_line(self, char: Dict, fallback_name: str = None) -> str:
+        """One-line character summary, rendered per the ACTIVE WORLD KIT.
+
+        A kit that declares no vitals keeps the legacy race/class/Level/Gold line,
+        so dnd5e campaigns are byte-for-byte unchanged. Any kit that declares its
+        own vitals gets those instead.
+
+        This exists because the line used to be hardcoded 5e for every world:
+        a Homeric campaign whose own kit says "if a sheet has a 'gold' field, IT IS
+        A BUG" still printed "Level 1 (HP: 24/24, Gold: 0)". A world that reads
+        distinct and prints 5e plays 5e -- the leak is at the display layer.
+        """
+        name = char.get('name') or fallback_name or 'Unknown'
+        hpc, hpm = hp_current_max(char)
+        vitals = self._kit_vitals()
+
+        if not vitals:
+            # Legacy / dnd5e path — unchanged.
+            return (f"{name} - {char.get('race', '?')} {char.get('class', '?')} "
+                    f"Level {char.get('level', 1)} "
+                    f"(HP: {hpc}/{hpm}, Gold: {char.get('gold', 0)})")
+
+        flat = to_flat(char)
+        head = f"{name}, {char['epithet']}" if char.get('epithet') else name
+        parts = [head]
+        grade = self._kit_grade(char)
+        if grade:
+            parts.append(grade)
+        parts.append(f"HP: {hpc}/{hpm}")
+        for v in vitals:
+            rendered = self._fmt_vital(flat.get(v, char.get(v)))
+            if rendered is not None:
+                parts.append(f"{v} {rendered}")
+        return " · ".join(parts)
+
     def _normalize_xp(self, char: Dict) -> Dict:
         """Normalize XP to object format {current, next_level}"""
         xp = char.get('xp', 0)
@@ -226,9 +338,7 @@ class PlayerManager(EntityManager):
             print(f"[ERROR] Character '{name}' not found")
             return None
 
-        hpc, hpm = hp_current_max(char)
-        gold = char.get('gold', 0)
-        summary = f"{char.get('name', name)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hpc}/{hpm}, Gold: {gold})"
+        summary = self._summary_line(char, fallback_name=name)
         status = char.get('status')
         if status in ('dying', 'dead'):
             summary += f" | {status.upper()}"
@@ -245,11 +355,7 @@ class PlayerManager(EntityManager):
         if self._is_using_single_character():
             char = self._load_character()
             if char:
-                hpc, hpm = hp_current_max(char)
-                gold = char.get('gold', 0)
-                summaries.append(
-                    f"{char.get('name', 'Unknown')} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hpc}/{hpm}, Gold: {gold})"
-                )
+                summaries.append(self._summary_line(char))
             return summaries
 
         # Legacy format: scan characters/ directory
@@ -258,11 +364,7 @@ class PlayerManager(EntityManager):
                 try:
                     with open(char_file, 'r', encoding='utf-8') as f:
                         char = json.load(f)
-                    hpc, hpm = hp_current_max(char)
-                    gold = char.get('gold', 0)
-                    summaries.append(
-                        f"{char.get('name', char_file.stem)} - {char.get('race', '?')} {char.get('class', '?')} Level {char.get('level', 1)} (HP: {hpc}/{hpm}, Gold: {gold})"
-                    )
+                    summaries.append(self._summary_line(char, fallback_name=char_file.stem))
                 except (json.JSONDecodeError, IOError):
                     continue
         return summaries

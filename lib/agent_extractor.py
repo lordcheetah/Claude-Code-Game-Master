@@ -81,9 +81,21 @@ class AgentExtractor:
 
         return backup
 
-    def prepare_for_agents(self, filepath: str) -> Dict[str, Any]:
+    def prepare_for_agents(self, filepath: str, append: bool = False) -> Dict[str, Any]:
         """
         Extract text and vectorize document for agent extraction and /enhance.
+
+        Args:
+            filepath: the document to embed.
+            append: ADD this document to the campaign's existing corpus instead of
+                REPLACING it. Default False preserves the historical behaviour
+                (a fresh /import wipes and re-embeds).
+
+                Use append=True when a campaign is grounded by more than one
+                document. /new-game does exactly this: it embeds the researched
+                source lore, then later embeds the compiled authored canon --
+                and without append the second call silently discarded the first,
+                so play-time RAG lost the primary sources the world was built on.
 
         Returns dict with:
         - document_name: Source document
@@ -133,24 +145,39 @@ class AgentExtractor:
             preserve_existing=True
         )
 
-        # Clear previous extraction temp files (chunks, extracted) but not world state
-        self._clear_extraction_temp()
+        # Clear previous extraction temp files (chunks, extracted) but not world
+        # state. When appending, the existing chunks ARE the corpus — keep them.
+        if not append:
+            self._clear_extraction_temp()
 
         # Initialize RAG extractor for this campaign
         self._rag_extractor = RAGExtractor(str(self.extraction_dir))
 
         # Extract and vectorize document (no categorization - all chunks stored uniformly)
-        rag_metadata = self._rag_extractor.extract_from_document(filepath, clear_existing=True)
+        rag_metadata = self._rag_extractor.extract_from_document(
+            filepath, clear_existing=not append
+        )
 
         # Save the full text for reference
         from lib.content_extractor import ContentExtractor
         extractor = ContentExtractor()
         full_text = extractor.extract_text(filepath)
-        (self.extraction_dir / "current-document.txt").write_text(full_text)
+        doc_path = self.extraction_dir / "current-document.txt"
+        if append and doc_path.exists():
+            previous = doc_path.read_text(encoding="utf-8", errors="replace")
+            banner = f"\n\n\n# ---- {Path(filepath).stem} ----\n\n"
+            doc_path.write_text(previous + banner + full_text, encoding="utf-8")
+        else:
+            doc_path.write_text(full_text, encoding="utf-8")
 
-        # Write chunks to files for extraction agents to read
+        # Write chunks to files for extraction agents to read. When appending,
+        # start numbering past the chunks already on disk so we do not overwrite
+        # chunk_000.txt and silently destroy the earlier document.
         chunks = self._rag_extractor._split_into_chunks(full_text)
-        self._write_chunk_files(chunks)
+        start_index = 0
+        if append:
+            start_index = self._next_chunk_index()
+        self._write_chunk_files(chunks, start_index=start_index)
 
         # Create metadata
         metadata = {
@@ -565,25 +592,53 @@ class AgentExtractor:
 
         return review
 
-    def _write_chunk_files(self, chunks: list) -> Dict:
-        """Write chunks to files for extraction agents to read."""
+    def _next_chunk_index(self) -> int:
+        """First chunk index that is free, from the HIGHEST existing index + 1.
+
+        Counting the files instead would collide the moment the sequence has a
+        gap: with chunk_000/001/003/004 on disk, len() is 4 and we would write
+        chunk_004.txt straight over an existing chunk -- silently destroying the
+        document this append exists to preserve. Gaps are reachable via a manual
+        delete or a half-finished run. Unparseable names are ignored rather than
+        crashing the run.
+        """
+        chunk_dir = self.extraction_dir / "chunks"
+        if not chunk_dir.is_dir():
+            return 0
+        indices = []
+        for p in chunk_dir.glob("chunk_*.txt"):
+            suffix = p.stem[len("chunk_"):]
+            try:
+                indices.append(int(suffix))
+            except ValueError:
+                continue
+        return max(indices) + 1 if indices else 0
+
+    def _write_chunk_files(self, chunks: list, start_index: int = 0) -> Dict:
+        """Write chunks to files for extraction agents to read.
+
+        start_index offsets the filenames so an appended document's chunks land
+        after the existing corpus instead of overwriting it.
+        """
         chunk_dir = self.extraction_dir / "chunks"
         chunk_dir.mkdir(exist_ok=True)
 
+        total = start_index + len(chunks)
         chunk_files = []
         for idx, chunk_text in enumerate(chunks):
-            filename = f"chunk_{idx:03d}.txt"
+            n = start_index + idx
+            filename = f"chunk_{n:03d}.txt"
             filepath = chunk_dir / filename
 
             # Add header to chunk
-            header = f"# Chunk {idx + 1} of {len(chunks)}\n"
+            header = f"# Chunk {n + 1} of {total}\n"
             header += "---\n\n"
 
-            filepath.write_text(header + chunk_text)
+            filepath.write_text(header + chunk_text, encoding="utf-8")
             chunk_files.append(str(filepath))
 
         print(f"  Wrote {len(chunk_files)} chunk files to {chunk_dir}")
-        return {"chunk_files": chunk_files, "total_chunks": len(chunks)}
+        return {"chunk_files": chunk_files, "total_chunks": total}
 
     def _save_chunks(self, categorized: Dict) -> Dict:
         """Save chunks to files for agent processing (legacy format)"""
@@ -688,13 +743,18 @@ def main():
             sys.argv.pop(idx)
             sys.argv.pop(idx)
 
+    # Add this document to the campaign's corpus instead of replacing it.
+    append = '--append' in sys.argv
+    if append:
+        sys.argv.remove('--append')
+
     extractor = AgentExtractor(campaign_name=campaign_name)
     command = sys.argv[1]
 
     if command == "prepare" and len(sys.argv) > 2:
         # Prepare document for extraction
         filepath = sys.argv[2]
-        result = extractor.prepare_for_agents(filepath)
+        result = extractor.prepare_for_agents(filepath, append=append)
         print(json.dumps(result, indent=2))
 
     elif command == "merge":

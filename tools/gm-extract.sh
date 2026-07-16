@@ -22,8 +22,15 @@ show_usage() {
 D&D Module Extraction Tool
 
 Commands:
-  prepare <file> [name]     Extract text and create chunks for agent processing
+  prepare <file> [name] [--append]
+                            Extract text and create chunks for agent processing
                             Optional: specify campaign name (defaults to filename)
+                            --append  Add this document to the campaign's existing
+                                      corpus instead of REPLACING it. Without it, a
+                                      second prepare wipes the first document's
+                                      chunks and vectors. Use when a world is
+                                      grounded by more than one document (e.g.
+                                      source lore + authored canon).
   normalize [campaign]      Copy extracted/*.json to campaign root, unwrapping
                             agent wrapper keys into the flat {name:...} runtime shape
   cap [campaign] [limit]    Cap each type to top-N (default 30) by importance
@@ -72,6 +79,7 @@ EOF
 prepare_document() {
     local document="$1"
     local campaign_name="$2"
+    local append_flag="$3"
 
     if [ -z "$document" ]; then
         echo "Error: Document path required"
@@ -95,12 +103,16 @@ prepare_document() {
 
     echo "Preparing document for extraction: $document"
 
+    if [ -n "$append_flag" ]; then
+        echo "Mode: APPEND (adding to the existing corpus, not replacing it)"
+    fi
+
     # Build command with optional campaign name
     if [ -n "$campaign_name" ]; then
         echo "Campaign name: $campaign_name"
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document" --campaign "$campaign_name"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document" --campaign "$campaign_name" $append_flag
     else
-        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document"
+        $PYTHON_CMD "$LIB_DIR/agent_extractor.py" prepare "$document" $append_flag
     fi
 
     echo
@@ -552,7 +564,19 @@ cap_extracted() {
 # Main command handling
 case "$1" in
     prepare)
-        prepare_document "$2" "$3"
+        # Accept --append in any position after the document.
+        _doc=""; _camp=""; _append=""
+        shift
+        for _arg in "$@"; do
+            if [ "$_arg" = "--append" ]; then
+                _append="--append"
+            elif [ -z "$_doc" ]; then
+                _doc="$_arg"
+            elif [ -z "$_camp" ]; then
+                _camp="$_arg"
+            fi
+        done
+        prepare_document "$_doc" "$_camp" "$_append"
         ;;
 
     normalize)

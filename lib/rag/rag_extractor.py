@@ -236,12 +236,22 @@ class RAGExtractor:
                 "document": self._document_name or "unknown",
             })
 
+        # IDs must be NAMESPACED BY DOCUMENT. They used to be f"doc_{i:04d}",
+        # restarting at doc_0000 for every document -- so embedding a second
+        # document into the same campaign collided with the first document's IDs
+        # and the store silently kept the original and dropped the new chunks.
+        # That made clear_existing=False (the documented default!) quietly
+        # useless, and is why callers reached for clear_existing=True instead.
+        # Namespacing keeps documents independent, and re-embedding the same
+        # document reuses its own IDs so it refreshes in place.
+        doc_slug = re.sub(r'[^a-z0-9]+', '-', (self._document_name or 'doc').lower()).strip('-') or 'doc'
+
         # Store all chunks
         self.vector_store.add_chunks(
             chunks=chunks,
             embeddings=[emb.tolist() for emb in embeddings],
             metadatas=metadatas,
-            ids=[f"doc_{i:04d}" for i in range(len(chunks))]
+            ids=[f"{doc_slug}_{i:04d}" for i in range(len(chunks))]
         )
 
 

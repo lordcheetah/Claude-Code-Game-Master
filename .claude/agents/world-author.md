@@ -51,7 +51,7 @@ contract — wrong shape = silently dropped):
     "<Name>": {
       "description": "<who they are + their hook>",
       "attitude": "ally | friendly | helpful | neutral | suspicious | hostile | enemy",
-      "tags": { "locations": ["<Name>"], "quests": [] }
+      "tags": { "locations": ["<Name>"], "quests": [], "factions": ["<Faction>"] }
     }
   },
   "facts": {
@@ -63,7 +63,7 @@ contract — wrong shape = silently dropped):
   "bible": {
     "factions":  { "nodes": [ { "name": "<Faction>", "...": "..." } ], "edges": [ { "from": "<Faction>", "to": "<Faction>", "type": "<relation>" } ] },
     "geography": { "nodes": [ { "name": "<Place>" } ], "edges": [ { "from": "<Place>", "to": "<Place>", "type": "<relation>" } ] },
-    "timeline": [ { "when": "<era>", "event": "<what happened>" } ],
+    "timeline": [ { "era": "<era>", "event": "<what happened>" } ],
     "signature_systems": [ { "name": "...", "summary": "..." } ],
     "voice": { "vocab": ["<in-world term>"], "sample_passages": ["<short line in voice>"] },
     "themes": ["<theme>"]
@@ -71,9 +71,18 @@ contract — wrong shape = silently dropped):
 }
 ```
 
+Two contract details that are easy to get wrong:
+- **Timeline entries key on `era`, not `when`.** The skeleton `world-bible.json`
+  emits `era` and consolidation appends INTO that skeleton, so a fragment using
+  `when` produces a heterogeneous timeline that renders inconsistently.
+- **`tags.factions` is real — use it.** Tag every NPC who belongs to a faction
+  with the faction's EXACT name from `bible.factions`. This is the only way an
+  NPC's allegiance survives consolidation as data rather than prose.
+
 Include only the keys relevant to your axis:
 - `geography` → `locations` + `bible.geography`.
-- `factions`/politics → `npcs` (faction figures) + `bible.factions` + `facts.plot_*`.
+- `factions`/politics → `npcs` (faction figures, tagged via `tags.factions`) +
+  `bible.factions` + `facts.plot_*`.
 - `history` → `bible.timeline` + `facts.<lore>` + prose.
 - `magic-lore` → `bible.signature_systems` (lore framing) + `facts.<lore>` + prose.
   (Mechanics live in `ruleset.json`, owned by the `world-kit-author` — describe,

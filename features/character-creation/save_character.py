@@ -3,6 +3,34 @@
 Save D&D character to world-state JSON files
 Handles complete character creation with proper calculations
 Supports multi-campaign system (saves to active campaign's character.json)
+
+KNOWN LIMITATION -- THIS PATH IS D&D 5e ONLY. It cannot save a character for a
+campaign whose World Kit defines its own stat model, and it does not merely
+reject one: given a non-5e sheet it would SILENTLY CORRUPT it.
+
+  - save_character() requires ['name', 'race', 'class', 'level', 'stats'].
+    A Homeric kit has a lineage and a kleos-grade; a Metroid kit has neither a
+    race nor a class. Those worlds have nothing to put in these fields.
+  - hp is recomputed as calculate_hp(class, level, con_modifier) -- a D&D hit-die
+    lookup keyed on class name, defaulting to d8. It OVERWRITES whatever hp the
+    kit's own rules produced.
+  - `saves` is derived from D&D class proficiencies, a concept most kits lack.
+  - a `gold` field is injected unconditionally. Some kits state outright that a
+    gold field on a sheet IS a bug (their economies are honour ledgers, tripods,
+    cattle -- not a purse).
+
+So a non-5e PC must currently be written to the campaign's character.json
+directly. The rest of the runtime already handles this correctly: player_manager
+renders the active kit's stat_schema.vitals, and schemas.validate_character only
+demands race/class/level when the kit declares no vitals of its own. This module
+is the last hardcoded-5e link in the chain.
+
+Fixing it means deriving the required fields and the vitals from the active
+kit's ruleset.json (the pattern player_manager._kit_vitals / _summary_line and
+schemas.validate_world_state already use), and leaving the 5e math to run only
+when the kit is actually 5e. The /create-character command itself makes the same
+assumption end to end -- races, classes, spell slots, gold -- and would want the
+same treatment.
 """
 
 import json

@@ -242,11 +242,16 @@ def validate_campaign_overview(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def validate_character(data: Dict[str, Any], kit_vitals: Optional[List[str]] = None) -> Tuple[bool, List[str]]:
     """Validate player character data against schema.
 
     Args:
         data: Character data dictionary
+        kit_vitals: the active World Kit's declared vitals, if known. A kit that
+            declares its own vitals does not have races, classes, or levels, so
+            requiring them would fail every non-5e world's character. Pass None
+            (the default) to keep the legacy 5e requirement for callers without
+            campaign context.
 
     Returns:
         Tuple of (is_valid, list of error messages)
@@ -256,8 +261,13 @@ def validate_character(data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     # Accept either shape: normalize legacy open-schema to canonical flat first.
     data = to_flat(data)
 
-    # Required fields
-    required = ['name', 'race', 'class', 'level']
+    # Required fields. race/class/level are D&D's, not every world's: a Homeric
+    # kit has lineage and kleos-grades, not a class and a level, and its own
+    # ruleset says a 'gold' field would be a bug. Only demand them when the kit
+    # has not declared a stat model of its own.
+    required = ['name']
+    if not kit_vitals:
+        required += ['race', 'class', 'level']
     for field in required:
         if not data.get(field):
             errors.append(f"Character: missing {field}")
@@ -312,6 +322,15 @@ def validate_world_state(campaign_dir: str) -> Dict[str, List[str]]:
     results = {}
     campaign_path = Path(campaign_dir)
 
+    # The active World Kit's vitals, if it declares any. A kit with its own stat
+    # model has no races/classes/levels to require of a character sheet.
+    kit_vitals = []
+    try:
+        with open(campaign_path / 'ruleset.json', 'r', encoding='utf-8') as f:
+            kit_vitals = ((json.load(f).get('stat_schema') or {}).get('vitals')) or []
+    except (IOError, json.JSONDecodeError, AttributeError):
+        kit_vitals = []
+
     # Validate each file type
     validators = {
         'npcs.json': ('npcs', validate_npc),
@@ -319,7 +338,7 @@ def validate_world_state(campaign_dir: str) -> Dict[str, List[str]]:
         'plots.json': ('plots', validate_plot),
         'items.json': ('items', validate_item),
         'campaign-overview.json': (None, validate_campaign_overview),
-        'character.json': (None, validate_character),
+        'character.json': (None, lambda d: validate_character(d, kit_vitals=kit_vitals)),
     }
 
     for filename, (entity_key, validator) in validators.items():
